@@ -1,5 +1,4 @@
 streamlit
 PyPDF2
 python-docx
-openai
-google-generativeai
+openai>=1.0
