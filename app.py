@@ -58,32 +58,58 @@ st.markdown("""
     [data-baseweb="popover"] li * { color: #0f172a !important; }
     [data-baseweb="popover"] li:hover { background-color: #e2e8f0 !important; }
 
-    /* ---------- ปรับสี Slider ให้เห็นชัดที่สุด ---------- */
-    /* เส้นฐาน (Track) */
+    /* ---------- ปรับสี Slider (เวอร์ชันใหม่: ส้มอมทอง ตัดกับตัวเลขขาว) ---------- */
+    /* เส้นฐาน (Track) - เปลี่ยนเป็นสีเทาเข้มเพื่อให้มีเส้นทางชัดเจน */
     section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div {
-        background-color: #334155 !important;
+        background-color: #475569 !important; /* เทาเข้ม */
+        border-radius: 9999px; /* ให้ทรงแบนกลมมน */
     }
-    /* เส้นที่ลากไปแล้ว (Fill) - สีฟ้าสว่าง */
+    /* เส้นที่ลากไปแล้ว (Fill) - เปลี่ยนเป็นสีส้มอมทอง (Amber) */
     section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div > div {
-        background-color: #00ffff !important; 
+        background-color: #FBBF24 !important; /* ส้มอมทอง */
+        border-radius: 9999px;
     }
-    /* จุดจับ (Handle) - สีขาวขอบฟ้า */
+    /* จุดจับ (Handle) - สีขาวขอบส้ม */
     section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div > div > div {
         background-color: #ffffff !important; 
-        border: 2px solid #00ffff !important; 
+        border: 3px solid #FBBF24 !important; 
+        transition: all 0.2s ease;
     }
-    /* เลขจำนวน (Value) */
-    section[data-testid="stSlider"] span {
+    section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div > div > div:hover {
+        transform: scale(1.1); /* ขยายเล็กน้อยเมื่อเอาเมาส์ชี้ */
+    }
+    /* เลขจำนวน (Value) - ตัวหนา สีขาว */
+    section[data-testid="stSidebar"] [data-testid="stSlider"] span {
         color: #ffffff !important;
-        font-weight: bold;
+        font-weight: 900 !important;
+        font-size: 1.1rem !important;
     }
 
     /* ---------- Advanced Settings (Expander) ---------- */
     section[data-testid="stSidebar"] details {
         background-color: #1e293b !important;
-        border: 1px solid #475569 !important;
+        border: 1px solid #3b82f6 !important;
+        border-radius: 8px;
     }
-    section[data-testid="stSidebar"] details summary * { color: #ffffff !important; }
+    section[data-testid="stSidebar"] details summary {
+        list-style: none;
+    }
+    section[data-testid="stSidebar"] details summary::-webkit-details-marker {
+        display: none;
+    }
+    section[data-testid="stSidebar"] details summary * { 
+        color: #ffffff !important; 
+        font-weight: bold;
+        padding-left: 10px;
+    }
+    section[data-testid="stSidebar"] details summary::after {
+        content: "➤";
+        margin-right: 10px;
+        color: #FBBF24; /* เปลี่ยนลูกศรเป็นสีส้มด้วย */
+    }
+    section[data-testid="stSidebar"] details[open] summary::after {
+        content: "▼";
+    }
 
     /* ---------- ช่องอัปโหลดไฟล์ ---------- */
     [data-testid="stFileUploader"] section {
@@ -102,7 +128,7 @@ st.markdown("""
     /* ---------- ปุ่ม ---------- */
     .stButton > button, .stDownloadButton > button {
         background-color: #0f172a !important;
-        border: none !important;
+        border: 1px solid #ffffff !important;
         padding: 0.6rem 1.5rem;
         border-radius: 8px;
         font-weight: bold;
