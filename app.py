@@ -39,6 +39,9 @@ NON_CHAT_KEYWORDS = (
     "rerank", "transcribe", "audio", "speech", "stable-diffusion", "sdxl", "flux",
 )
 
+# ชื่อแท็กความคิด (reasoning) ที่โมเดลบางตัวส่งออกมา
+THINK_TAGS = ("think", "thinking", "reasoning")
+
 
 @st.cache_data(ttl=600, show_spinner=False)
 def list_models(api_key, base_url):
@@ -120,11 +123,23 @@ def extract_text(f):
 
 def clean_output(text: str) -> str:
     """ตัดส่วนความคิด (reasoning) ของโมเดลบางตัวออก"""
-    text = re.", text, flags=re.DOTALL | re.IGNORECASE)
-    text = re.sub(r"<thinking>.*?</thinking>", "", text, flags=re.DOTALL | re.IGNORECASE)
-    # กรณีมีแต่ปิดแท็กโดยไม่มีเปิด
-    if "</think>" in text:
-        text = text.split("</think>")[-1]
+    for name in THINK_TAGS:
+        open_t = "<" + name + ">"
+        close_t = "<" + "/" + name + ">"
+
+        # 1) ตัดบล็อกที่มีทั้งเปิดและปิด
+        pattern = re.escape(open_t) + r".*?" + re.escape(close_t)
+        text = re.sub(pattern, "", text, flags=re.DOTALL | re.IGNORECASE)
+
+        # 2) มีแต่แท็กปิด (บางโมเดลไม่ส่งแท็กเปิด) -> เก็บเฉพาะส่วนหลังแท็กปิด
+        idx = text.lower().rfind(close_t)
+        if idx != -1:
+            text = text[idx + len(close_t):]
+
+        # 3) มีแท็กเปิดแต่ยังไม่ปิด (ระหว่างสตรีม) -> ซ่อนส่วนที่ค้างไว้ก่อน
+        oi = text.lower().find(open_t)
+        if oi != -1:
+            text = text[:oi]
     return text.strip()
 
 
@@ -180,13 +195,14 @@ def generate_exam(prompt_text, placeholder=None):
         return "⚠️ กรุณาตั้งค่า OPENAI_API_KEY ใน Secrets"
 
     tokens = (
-        min(16000, max(1500, num_questions * 450 + 800)) if auto_tokens else int(manual_tokens)
+        min(16000, max(1500, num_questions * 450 + 800))
+        if auto_tokens else int(manual_tokens)
     )
     system_prompt = "คุณคือครูผู้เชี่ยวชาญด้านการออกข้อสอบ"
 
     client = OpenAI(api_key=API_KEY, base_url=BASE_URL, timeout=180, max_retries=1)
 
-    # ลำดับการลองแบบถอยหลัง (fallback) เพื่อให้ใช้ได้กับทุกโมเดล
+    # ลำดับการลองแบบถอยหลัง (fallback) เพื่อให้ใช้ได้กับหลายโมเดล
     system_modes = ["system", "merged"]
     param_variants = [
         {"temperature": temperature, "max_tokens": tokens},
@@ -218,12 +234,18 @@ def generate_exam(prompt_text, placeholder=None):
                 except Exception as e:
                     last_error = e
                     msg = _err_text(e)
-                    # ข้อผิดพลาดที่ลองใหม่ไม่ช่วย
-                    if any(k in msg for k in ("401", "invalid api key", "incorrect api key", "authentication")):
+                    # ข้อผิดพลาดที่ลองใหม่ก็ไม่ช่วย
+                    if any(k in msg for k in (
+                        "401", "invalid api key", "incorrect api key", "authentication"
+                    )):
                         return "⛔ API Key ไม่ถูกต้องหรือไม่มีสิทธิ์ใช้งาน"
-                    if "429" in msg or "rate limit" in msg or "quota" in msg or "insufficient" in msg:
+                    if any(k in msg for k in (
+                        "429", "rate limit", "quota", "insufficient"
+                    )):
                         return "⛔ ใช้งานเกินกำหนด (Credit/Rate Limit) กรุณาลองใหม่ภายหลัง หรือหลัง 00:00 น."
-                    if "404" in msg or "model_not_found" in msg or "does not exist" in msg:
+                    if any(k in msg for k in (
+                        "404", "model_not_found", "does not exist"
+                    )):
                         return f"⚠️ ไม่พบโมเดล `{model_name}` หรือไม่มีสิทธิ์ใช้งาน"
                     # นอกนั้นลองรูปแบบถัดไป
                     continue
