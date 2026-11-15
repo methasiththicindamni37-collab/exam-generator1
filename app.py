@@ -782,10 +782,28 @@ def _extract_content(response) -> str:
             part.get("text", "") if isinstance(part, dict) else str(getattr(part, "text", ""))
             for part in content
         )
-    # โมเดล reasoning บางตัวใส่คำตอบไว้ที่ reasoning_content แทน
+    # โมเดล reasoning บางตัวใส่คำตอบไว้ที่ reasoning_content / reasoning แทน
     if not content:
-        content = getattr(message, "reasoning_content", None) or ""
+        for field in ("reasoning_content", "reasoning"):
+            value = getattr(message, field, None)
+            if isinstance(value, str) and value.strip():
+                content = value
+                break
+    # ผู้ให้บริการบางรายใส่ข้อความไว้ที่ choices[0].text
+    if not content:
+        content = getattr(response.choices[0], "text", None) or ""
     return content or ""
+
+
+def _describe_response(response) -> str:
+    """สรุปสถานะ response ไว้แสดงเมื่อ AI ตอบว่าง เพื่อใช้วินิจฉัย"""
+    try:
+        choice = response.choices[0]
+        usage = getattr(response, "usage", None)
+        used = getattr(usage, "completion_tokens", "?") if usage else "?"
+        return f"finish={getattr(choice, 'finish_reason', '?')}, completion_tokens={used}"
+    except Exception:
+        return "ไม่มี choices ใน response"
 
 
 def chat(cfg: dict, user_prompt: str, max_tokens: int, temperature: float) -> str:
@@ -811,6 +829,7 @@ def chat(cfg: dict, user_prompt: str, max_tokens: int, temperature: float) -> st
     )
 
     last_error = None
+    tokens = max_tokens
     for _ in range(6):
         if flags["merge_system"]:
             messages = [{"role": "user", "content": f"{SYSTEM_PROMPT}\n\n{user_prompt}"}]
@@ -824,11 +843,26 @@ def chat(cfg: dict, user_prompt: str, max_tokens: int, temperature: float) -> st
         if flags["use_temp"]:
             kwargs["temperature"] = temperature
         if flags["token_param"]:
-            kwargs[flags["token_param"]] = max_tokens
+            kwargs[flags["token_param"]] = tokens
 
         try:
             response = client.chat.completions.create(**kwargs)
-            return clean_output(_extract_content(response))
+            text = clean_output(_extract_content(response))
+            if text:
+                return text
+
+            # AI ตอบว่าง: ลองรวม system เข้า user ก่อน แล้วค่อยเพิ่มโควตา token
+            last_error = ValueError(
+                f"AI ไม่ได้ส่งเนื้อหากลับมา ({_describe_response(response)}, โมเดล: {cfg['model']}) "
+                "ลองเลือกโมเดลอื่น หรือเพิ่ม Max Tokens"
+            )
+            if not flags["merge_system"]:
+                flags["merge_system"] = True
+                continue
+            if tokens < 16000:
+                tokens = min(tokens * 2, 16000)
+                continue
+            break
         except Exception as exc:
             last_error = exc
             msg = str(exc).lower()
