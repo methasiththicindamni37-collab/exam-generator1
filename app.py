@@ -21,16 +21,16 @@ st.set_page_config(
     layout="wide"
 )
 
-# ---------- CSS แบบเรียบง่าย อ่านง่ายที่สุด ----------
+# ---------- CSS ปรับสีตัดกันชัดเจนที่สุด ----------
 st.markdown("""
 <style>
-    /* พื้นหลังหลัก */
-    .stApp { background-color: #ffffff; color: #0f172a; }
+    /* ---------- พื้นหลังหลัก ---------- */
+    .stApp { background-color: #ffffff; color: #000000; }
+
+    /* ---------- Sidebar สีน้ำเงินเข้ม ---------- */
+    section[data-testid="stSidebar"] { background-color: #0f172a !important; }
     
-    /* ---------- Sidebar สีเทาเข้ม ---------- */
-    section[data-testid="stSidebar"] { background-color: #1e293b !important; }
-    
-    /* ข้อความใน Sidebar */
+    /* ข้อความใน Sidebar ทั้งหมดเป็นสีขาว */
     section[data-testid="stSidebar"] h1,
     section[data-testid="stSidebar"] h2,
     section[data-testid="stSidebar"] h3,
@@ -39,58 +39,62 @@ st.markdown("""
     section[data-testid="stSidebar"] span,
     section[data-testid="stSidebar"] div { color: #ffffff !important; }
 
-    /* กล่องเลือก / ช่องกรอก */
+    /* ---------- กล่องเลือก / ช่องกรอก ---------- */
     section[data-testid="stSidebar"] [data-baseweb="select"],
     section[data-testid="stSidebar"] input[type="text"],
     section[data-testid="stSidebar"] input[type="number"],
     section[data-testid="stSidebar"] input[type="range"] {
         background-color: #ffffff !important;
         color: #000000 !important;
-        border: 1px solid #94a3b8 !important;
+        border: 2px solid #3b82f6 !important; /* ขอบฟ้าชัดๆ */
     }
     
-    /* รายการตัวเลือก */
+    /* รายการตัวเลือกที่เด้งลงมา */
     [data-baseweb="popover"] ul,
     [data-baseweb="popover"] li { background-color: #ffffff !important; }
     [data-baseweb="popover"] li,
     [data-baseweb="popover"] li * { color: #000000 !important; }
-    [data-baseweb="popover"] li:hover { background-color: #f1f5f9 !important; }
+    [data-baseweb="popover"] li:hover { background-color: #e0f2fe !important; }
 
-    /* ---------- Slider แบบเรียบง่าย---------- */
-    /* เส้นฐาน */
+    /* ---------- Slider แบบสีตัดกันชัดเจน ---------- */
+    /* 1. เส้นฐาน (Track) : สีเทาอ่อน */
     section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div {
-        background-color: #64748b !important;
-        border-radius: 4px;
+        background-color: #475569 !important; 
+        height: 10px !important; /* หนาขึ้น */
+        border-radius: 9999px;
     }
-    /* เส้นที่ลากแล้ว (สีน้ำเงิน) */
+    /* 2. เส้นที่ลากไปแล้ว (Fill) : สีเหลืองทอง (ตัดกับพื้นดำได้ดีที่สุด) */
     section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div > div {
-        background-color: #3b82f6 !important;
-        border-radius: 4px;
+        background-color: #fbbf24 !important; 
+        border-radius: 9999px;
+        box-shadow: 0 0 8px rgba(251, 191, 36, 0.6); /* มีแสงเรือง */
     }
-    /* จุดจับ (สีขาวขอบน้ำเงิน) */
+    /* 3. จุดจับ (Handle) : สีขาวขอบเหลืองทอง */
     section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div > div > div {
         background-color: #ffffff !important; 
-        border: 2px solid #3b82f6 !important; 
-        width: 18px;
-        height: 18px;
+        border: 3px solid #fbbf24 !important; 
+        width: 24px !important; /* ใหญ่ขึ้น */
+        height: 24px !important;
+        margin-top: -7px;
     }
-    /* ตัวเลข (พื้นขาว ตัวดำ ใหญ่ชัดเจน) */
+    /* 4. ตัวเลข (Value) : กล่องสีขาว ตัวหนังสือดำ ใหญ่และหนา */
     section[data-testid="stSidebar"] [data-testid="stSlider"] span {
         background-color: #ffffff !important;
         color: #000000 !important;
-        font-weight: bold !important;
-        font-size: 1.1rem !important;
-        padding: 4px 10px !important;
-        border-radius: 6px !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        font-weight: 900 !important;
+        font-size: 1.2rem !important;
+        padding: 4px 12px !important;
+        border-radius: 10px !important;
+        border: 2px solid #fbbf24 !important; /* ขอบเหลืองทอง */
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3) !important; /* มีเงาลอยเด่น */
     }
 
-    /* ---------- ปุ่มตั้งค่า ---------- */
+    /* ---------- ปุ่มตั้งค่าขั้นสูง ---------- */
     section[data-testid="stSidebar"] details {
-        background-color: #334155 !important;
-        border: 2px solid #64748b !important;
-        border-radius: 8px;
-        margin-top: 10px;
+        background-color: #1e293b !important;
+        border: 2px solid #3b82f6 !important;
+        border-radius: 10px;
+        margin-top: 15px;
     }
     section[data-testid="stSidebar"] details summary {
         list-style: none;
@@ -107,12 +111,13 @@ st.markdown("""
         font-weight: bold;
         font-size: 1.1rem !important;
     }
-    /* ลูกศร */
+    /* ลูกศรเปลี่ยนเป็นสีเหลืองทอง */
     section[data-testid="stSidebar"] details summary::after {
         content: "▼";
         margin-left: auto;
-        color: #94a3b8;
-        font-size: 1rem;
+        color: #fbbf24 !important;
+        font-size: 1.2rem;
+        font-weight: bold;
     }
     section[data-testid="stSidebar"] details[open] summary::after {
         content: "▲";
@@ -121,13 +126,13 @@ st.markdown("""
     /* ---------- อัปโหลดไฟล์ ---------- */
     [data-testid="stFileUploader"] section {
         background-color: #f8fafc !important;
-        border: 2px dashed #94a3b8 !important;
+        border: 2px dashed #64748b !important;
     }
     [data-testid="stFileUploader"] section *,
     [data-testid="stFileUploaderFile"] * { color: #000000 !important; }
     [data-testid="stFileUploader"] section button {
         background-color: #ffffff !important;
-        border: 1px solid #0f172a !important;
+        border: 2px solid #0f172a !important;
     }
     [data-testid="stFileUploader"] section button * { color: #0f172a !important; }
     [data-testid="stFileUploader"] svg { fill: #0f172a !important; }
@@ -135,14 +140,15 @@ st.markdown("""
     /* ---------- ปุ่มทั่วไป ---------- */
     .stButton > button, .stDownloadButton > button {
         background-color: #0f172a !important;
-        border: 1px solid #ffffff !important;
+        border: 2px solid #ffffff !important;
         padding: 0.6rem 1.5rem;
-        border-radius: 6px;
+        border-radius: 8px;
         font-weight: bold;
         color: white !important;
+        font-size: 1.1rem !important;
     }
     .stButton > button:hover, .stDownloadButton > button:hover {
-        background-color: #3b82f6 !important;
+        background-color: #2563eb !important;
     }
 </style>
 """, unsafe_allow_html=True)
