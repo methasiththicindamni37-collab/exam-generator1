@@ -7,7 +7,7 @@ from openai import OpenAI
 # ตั้งค่าหน้าเว็บ
 st.set_page_config(page_title="AI Exam Generator", page_icon="🤖", layout="wide")
 
-# ---------- UI (CSS ตกแต่ง) ----------
+# ---------- UI (CSS) ----------
 st.markdown("""
 <style>
     .stApp { background-color: #ffffff; }
@@ -27,7 +27,7 @@ st.markdown("""
 st.title("🤖 AI Exam Generator")
 st.markdown("### 📌 ระบบสร้างข้อสอบอัจฉริยะ")
 
-# ---------- Secrets (ดึง Key) ----------
+# ---------- Secrets ----------
 API_KEY = st.secrets.get("OPENAI_API_KEY", "")
 BASE_URL = st.secrets.get("OPENAI_BASE_URL", "https://ai.psu.blue/v1")
 GOOGLE_KEY = st.secrets.get("GOOGLE_API_KEY", "")
@@ -42,7 +42,7 @@ def list_models(api_key, base_url):
         return []
 
 
-# ---------- Sidebar (เมนูซ้าย) ----------
+# ---------- Sidebar ----------
 st.sidebar.header("⚙️ การตั้งค่า")
 provider = st.sidebar.radio("เลือกผู้ให้บริการ", ["PSU dotBlue (OpenAI-compatible)", "Google Gemini"])
 
@@ -59,7 +59,6 @@ if provider.startswith("PSU"):
 else:
     if not GOOGLE_KEY:
         st.sidebar.error("ยังไม่ได้ตั้ง GOOGLE_API_KEY ใน Secrets")
-    # ⚠️ แก้โมเดล Google เป็นเวอร์ชันล่าสุด (2.0-flash ปิดไปแล้ว)
     model_name = st.sidebar.text_input("ชื่อโมเดล Gemini", value="gemini-2.5-flash")
 
 question_type = st.sidebar.selectbox(
@@ -100,7 +99,9 @@ def generate_exam(prompt_text):
             return "⚠️ ยังไม่ได้ตั้ง OPENAI_API_KEY ใน Secrets"
         try:
             client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
-            resp = client.chat.completions.create(
+            
+            # 🔑 สำคัญ: ต้องใช้ stream=False เพื่อให้ได้ response ครั้งเดียวทั้งหมด
+            response = client.chat.completions.create(
                 model=model_name,
                 messages=[
                     {"role": "system", "content": "คุณคือครูผู้เชี่ยวชาญ"},
@@ -108,16 +109,12 @@ def generate_exam(prompt_text):
                 ],
                 temperature=0.7,
                 max_tokens=2000,
+                stream=False  # 👈 สำคัญมาก! ต้อง stream=False
             )
             
-            # *** ส่วนที่สำคัญ (แก้ไข Error) ***
-            # เช็คว่า resp ส่งกลับมาเป็น "ข้อความ" ธรรมดาไหม
-            # (บางที Server ส่ง Error Message มาแบบ String ทำให้เกิด error ตัวก่อนหน้า)
-            if isinstance(resp, str):
-                return resp
-            
-            # ถ้าไม่ใช่ String ค่อยดึงข้อมูลแบบปกติ
-            return resp.choices[0].message.content
+            # ดึงข้อความจาก response object
+            content = response.choices[0].message.content
+            return content if content else "⚠️ ไม่ได้รับข้อความจากโมเดล"
             
         except Exception as e:
             return f"เกิดข้อผิดพลาด dotBlue: {e}"
@@ -129,7 +126,7 @@ def generate_exam(prompt_text):
         genai.configure(api_key=GOOGLE_KEY)
         model = genai.GenerativeModel(model_name)
         resp = model.generate_content(prompt_text)
-        return resp.text
+        return resp.text if resp.text else "⚠️ ไม่ได้รับข้อความจากโมเดล"
     except Exception as e:
         return f"เกิดข้อผิดพลาด Google: {e}"
 
