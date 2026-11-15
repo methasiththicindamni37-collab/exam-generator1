@@ -797,13 +797,43 @@ def _extract_content(response) -> str:
 
 def _describe_response(response) -> str:
     """สรุปสถานะ response ไว้แสดงเมื่อ AI ตอบว่าง เพื่อใช้วินิจฉัย"""
+    if response is None:
+        return "ไม่ได้รับข้อมูลจาก streaming"
+    if isinstance(response, str):
+        return f"เซิร์ฟเวอร์ตอบเป็นข้อความ: {response[:200]}"
     try:
         choice = response.choices[0]
         usage = getattr(response, "usage", None)
         used = getattr(usage, "completion_tokens", "?") if usage else "?"
         return f"finish={getattr(choice, 'finish_reason', '?')}, completion_tokens={used}"
     except Exception:
-        return "ไม่มี choices ใน response"
+        pass
+    try:
+        raw = response.model_dump_json() if hasattr(response, "model_dump_json") else str(response)
+    except Exception:
+        raw = str(response)
+    return f"ไม่มี choices ใน response, ข้อมูลที่ได้รับ: {raw[:300]}"
+
+
+def _stream_collect(client, kwargs: dict) -> str:
+    """เรียกแบบ streaming แล้วรวมข้อความ (ใช้กับเซิร์ฟเวอร์ที่ไม่ตอบแบบปกติ)"""
+    stream = client.chat.completions.create(stream=True, **kwargs)
+    content_parts, reasoning_parts = [], []
+    for chunk in stream:
+        choices = getattr(chunk, "choices", None)
+        if not choices:
+            continue
+        delta = getattr(choices[0], "delta", None)
+        if delta is None:
+            continue
+        piece = getattr(delta, "content", None)
+        if piece:
+            content_parts.append(piece)
+            continue
+        reasoning = getattr(delta, "reasoning_content", None) or getattr(delta, "reasoning", None)
+        if isinstance(reasoning, str) and reasoning:
+            reasoning_parts.append(reasoning)
+    return "".join(content_parts) or "".join(reasoning_parts)
 
 
 def chat(cfg: dict, user_prompt: str, max_tokens: int, temperature: float) -> str:
@@ -846,18 +876,28 @@ def chat(cfg: dict, user_prompt: str, max_tokens: int, temperature: float) -> st
             kwargs[flags["token_param"]] = tokens
 
         try:
-            response = client.chat.completions.create(**kwargs)
-            text = clean_output(_extract_content(response))
+            if flags.get("stream"):
+                response = None
+                text = clean_output(_stream_collect(client, kwargs))
+            else:
+                response = client.chat.completions.create(**kwargs)
+                text = clean_output(_extract_content(response))
             if text:
                 return text
 
-            # AI ตอบว่าง: ลองรวม system เข้า user ก่อน แล้วค่อยเพิ่มโควตา token
+            # AI ตอบว่าง: ลอง streaming -> รวม system เข้า user -> เพิ่มโควตา token
             last_error = ValueError(
                 f"AI ไม่ได้ส่งเนื้อหากลับมา ({_describe_response(response)}, โมเดล: {cfg['model']}) "
                 "ลองเลือกโมเดลอื่น หรือเพิ่ม Max Tokens"
             )
+            if not flags.get("stream") and not getattr(response, "choices", None):
+                flags["stream"] = True
+                continue
             if not flags["merge_system"]:
                 flags["merge_system"] = True
+                continue
+            if not flags.get("stream"):
+                flags["stream"] = True
                 continue
             if tokens < 16000:
                 tokens = min(tokens * 2, 16000)
