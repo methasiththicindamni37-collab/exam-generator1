@@ -1425,21 +1425,33 @@ def review_items(cfg, document_text, items, topic_names):
 
 
 def run_exam_pipeline(cfg, document_text, analysis, n, qtype, difficulty, max_tokens,
-                      focus=None, avoid=None, log=None):
-    """ขั้นที่ 3-4: วางแผน -> สร้างข้อสอบ -> ตรวจคุณภาพ"""
+                      focus=None, avoid=None, log=None, use_plan=True, use_review=True):
+    """ขั้นที่ 3-4: วางแผน -> สร้างข้อสอบ -> ตรวจคุณภาพ
+    use_plan=False  : แบ่งจำนวนข้อตามหัวข้อด้วยระบบเอง (ไม่เรียก AI)
+    use_review=False: ข้ามการตรวจคุณภาพด้วย AI (เร็วขึ้น)"""
     log = log or (lambda message: None)
     topic_names = [t["name"] for t in analysis["topics"]]
 
-    log("ขั้นที่ 3: AI กำลังวางแผนข้อสอบ...")
-    plan = plan_exam(cfg, analysis, n, qtype, difficulty, focus)
+    if use_plan:
+        log("ขั้นที่ 3: AI กำลังวางแผนข้อสอบ...")
+        plan = plan_exam(cfg, analysis, n, qtype, difficulty, focus)
+    else:
+        plan = even_plan(topic_names, n, focus)
 
     log("ขั้นที่ 3: AI กำลังสร้างข้อสอบ...")
     items = generate_items(cfg, document_text, analysis, plan, qtype, difficulty, n, max_tokens, avoid)
     for index, item in enumerate(items, start=1):
         item["id"] = index
 
-    log("ขั้นที่ 4: AI กำลังตรวจสอบคุณภาพข้อสอบ...")
-    items, report = review_items(cfg, document_text, items, topic_names)
+    if use_review:
+        log("ขั้นที่ 4: AI กำลังตรวจสอบคุณภาพข้อสอบ...")
+        items, report = review_items(cfg, document_text, items, topic_names)
+    else:
+        report = {
+            "checked": False, "total": len(items), "fixed": 0, "removed": 0,
+            "notes": ["ข้ามขั้นตรวจคุณภาพด้วย AI ตามการตั้งค่า (เพื่อความเร็ว)"],
+            "overall": "",
+        }
     for index, item in enumerate(items, start=1):
         item["id"] = index
 
@@ -2095,6 +2107,10 @@ with st.sidebar.expander("🔧 ตั้งค่าการสร้างข�
     number_of_questions = st.slider("จำนวนข้อสอบต่อชุด", 1, 20, 5)
     temperature = st.slider("Temperature", 0.0, 1.5, 0.7, 0.1)
 
+    st.caption("⚡ ตัวเลือกความเร็ว (ปิด = เร็วขึ้น)")
+    use_plan = st.checkbox("ให้ AI วางแผนข้อสอบ", value=False)
+    use_review = st.checkbox("ตรวจคุณภาพข้อสอบด้วย AI", value=False)
+
     auto_tokens = st.checkbox("คำนวณ Max Tokens อัตโนมัติ", value=True)
     if auto_tokens:
         max_tokens = min(16000, max(3000, number_of_questions * 600 + 1500))
@@ -2246,6 +2262,7 @@ if uploaded_file is not None and file_is_valid and st.session_state.exam is None
                 new_exam, new_report = run_exam_pipeline(
                     cfg, raw_text, new_analysis, number_of_questions, qtype,
                     difficulty, int(max_tokens), log=log,
+                    use_plan=use_plan, use_review=use_review,
                 )
                 status.update(label="เสร็จแล้ว พร้อมให้ทำข้อสอบ", state="complete", expanded=False)
             except Exception as exc:
@@ -2351,6 +2368,7 @@ if exam is not None and uploaded_file is not None and file_is_valid:
                         focus=learning["next_exam_focus"],
                         avoid=st.session_state.asked_questions,
                         log=log_next,
+                        use_plan=use_plan, use_review=use_review,
                     )
                     status.update(label="เสร็จแล้ว พร้อมให้ทำข้อสอบชุดใหม่", state="complete", expanded=False)
                 except Exception as exc:
