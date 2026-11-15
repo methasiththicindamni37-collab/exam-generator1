@@ -164,6 +164,45 @@ st.markdown(
         color: #CBD5E1 !important;
     }
 
+    /* Sidebar expander header: keep dark background + light text in every state
+       (closed, open, hover, focus, active) */
+    section[data-testid="stSidebar"] [data-testid="stExpander"] details,
+    section[data-testid="stSidebar"] [data-testid="stExpander"] details[open],
+    section[data-testid="stSidebar"] [data-testid="stExpander"] summary,
+    section[data-testid="stSidebar"] [data-testid="stExpander"] details[open] > summary,
+    section[data-testid="stSidebar"] [data-testid="stExpander"] summary:hover,
+    section[data-testid="stSidebar"] [data-testid="stExpander"] summary:focus,
+    section[data-testid="stSidebar"] [data-testid="stExpander"] summary:focus-visible,
+    section[data-testid="stSidebar"] [data-testid="stExpander"] summary:active {
+        background: transparent !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
+        outline: none !important;
+    }
+
+    section[data-testid="stSidebar"] [data-testid="stExpander"] summary,
+    section[data-testid="stSidebar"] [data-testid="stExpander"] summary span,
+    section[data-testid="stSidebar"] [data-testid="stExpander"] summary p,
+    section[data-testid="stSidebar"] [data-testid="stExpander"] summary div,
+    section[data-testid="stSidebar"] [data-testid="stExpander"] details[open] > summary,
+    section[data-testid="stSidebar"] [data-testid="stExpander"] details[open] > summary p,
+    section[data-testid="stSidebar"] [data-testid="stExpander"] summary:focus,
+    section[data-testid="stSidebar"] [data-testid="stExpander"] summary:focus p {
+        color: #F8FAFC !important;
+    }
+
+    section[data-testid="stSidebar"] [data-testid="stExpander"] summary:hover,
+    section[data-testid="stSidebar"] [data-testid="stExpander"] summary:hover p,
+    section[data-testid="stSidebar"] [data-testid="stExpander"] summary:hover span {
+        color: #FFFFFF !important;
+    }
+
+    /* Expander body keeps the same dark translucent surface when open */
+    section[data-testid="stSidebar"] [data-testid="stExpander"] details[open] {
+        background: rgba(255,255,255,.06) !important;
+        border-radius: 12px;
+    }
+
     /* Answer reveal controls in the result area. */
     .answer-expander {
         border: 1px solid #C7D2FE;
