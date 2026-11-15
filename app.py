@@ -911,7 +911,6 @@ def render_quiz(text: str):
 with st.sidebar:
     st.markdown("### ⚙️ ตั้งค่าระบบ")
     
-    # ตัวอย่างการตั้งค่า API Key & Base URL (สามารถปรับเปลี่ยนตามโค้ดเดิมของคุณได้)
     api_key = st.text_input("OpenAI API Key", type="password", value="")
     base_url = st.text_input("Base URL", value="https://api.openai.com/v1")
 
@@ -924,7 +923,7 @@ with st.sidebar:
 
     model = st.selectbox("เลือกโมเดล AI", options=models_list, index=0)
 
-    with st.expander("🛠️ ตั้งการสร้างข้อสอบ", expanded=True):
+    with st.expander("🛠️ ตั้งค่าการสร้างข้อสอบ", expanded=True):
         question_type = st.selectbox(
             "รูปแบบข้อสอบ",
             options=["Multiple Choice (ปรนัย)", "True/False (ถูก/ผิด)", "Short Answer (อัตนัย)"]
@@ -933,7 +932,6 @@ with st.sidebar:
         number_of_questions = st.slider("จำนวนข้อสอบ", min_value=1, max_value=20, value=5)
         temperature = st.slider("Temperature", min_value=0.0, max_value=1.0, value=0.7, step=0.05)
         
-        # --- ใช้ st.toggle (ปุ่มกดเปิด-ปิดสวิตช์) แทน Checkbox ตามที่ต้องการ ---
         auto_tokens = st.toggle("คำนวณ Max Tokens อัตโนมัติ", value=True)
         max_tokens = 3050
         if not auto_tokens:
@@ -952,7 +950,6 @@ st.markdown(
         <p>อัปโหลดเอกสารเพื่อวิเคราะห์และสร้างข้อสอบหรือแบบฝึกหัดได้ทันที</p>
     </div>
     """,
-    unsafe_allow_image=True if 'unsafe_allow_image' in globals() else True,
     unsafe_allow_html=True
 )
 
@@ -1000,7 +997,6 @@ if uploaded_file:
                         )
 
                         if streaming:
-                            # Handling generator stream output
                             full_content = ""
                             placeholder = st.empty()
                             for chunk in result:
@@ -1031,7 +1027,6 @@ else:
         unsafe_allow_html=True
     )
 
-# แสดงผลข้อสอบและโหมดทำ Quiz
 if st.session_state.exam_result:
     st.divider()
     st.subheader("📋 ข้อสอบ / แบบฝึกหัดที่สร้างขึ้น")
