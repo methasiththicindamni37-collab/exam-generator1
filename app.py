@@ -911,35 +911,52 @@ def render_quiz(text: str):
 with st.sidebar:
     st.markdown("### ⚙️ ตั้งค่าระบบ")
     
-    api_key = st.text_input("OpenAI API Key", type="password", value="")
-    base_url = st.text_input("Base URL", value="https://api.openai.com/v1")
+    # เพิ่มปุ่ม Toggle สำหรับเปิด/ปิดแผงเมนูตั้งค่า
+    show_settings = st.toggle("แสดงแผงตั้งค่าระบบ", value=True)
 
-    models_list = list_models(api_key, base_url) if api_key else []
-    default_model = "PSU-LLM/psu-gemma"
-    if default_model not in models_list and models_list:
-        models_list.insert(0, default_model)
-    elif not models_list:
-        models_list = [default_model]
+    if show_settings:
+        # ใส่ API Key สำเร็จรูปไว้ตรงนี้ เพื่อให้คนอื่นเปิดเข้ามาแล้วใช้งานได้ทันที (เปลี่ยนค่าตรง value เป็น Key ของคุณได้เลย)
+        api_key = st.text_input("OpenAI API Key", type="password", value="ใส่_API_Key_ของคุณที่นี่")
+        base_url = st.text_input("Base URL", value="https://api.openai.com/v1")
 
-    model = st.selectbox("เลือกโมเดล AI", options=models_list, index=0)
+        models_list = list_models(api_key, base_url) if api_key else []
+        default_model = "PSU-LLM/psu-gemma"
+        if default_model not in models_list and models_list:
+            models_list.insert(0, default_model)
+        elif not models_list:
+            models_list = [default_model]
 
-    with st.expander("🛠️ ตั้งค่าการสร้างข้อสอบ", expanded=True):
-        question_type = st.selectbox(
-            "รูปแบบข้อสอบ",
-            options=["Multiple Choice (ปรนัย)", "True/False (ถูก/ผิด)", "Short Answer (อัตนัย)"]
-        )
-        difficulty = st.selectbox("ระดับความยาก", options=["ง่าย", "ปานกลาง", "ยาก"])
-        number_of_questions = st.slider("จำนวนข้อสอบ", min_value=1, max_value=20, value=5)
-        temperature = st.slider("Temperature", min_value=0.0, max_value=1.0, value=0.7, step=0.05)
-        
-        auto_tokens = st.toggle("คำนวณ Max Tokens อัตโนมัติ", value=True)
+        model = st.selectbox("เลือกโมเดล AI", options=models_list, index=0)
+
+        with st.expander("🛠️ ตั้งค่าการสร้างข้อสอบ", expanded=True):
+            question_type = st.selectbox(
+                "รูปแบบข้อสอบ",
+                options=["Multiple Choice (ปรนัย)", "True/False (ถูก/ผิด)", "Short Answer (อัตนัย)"]
+            )
+            difficulty = st.selectbox("ระดับความยาก", options=["ง่าย", "ปานกลาง", "ยาก"])
+            number_of_questions = st.slider("จำนวนข้อสอบ", min_value=1, max_value=20, value=5)
+            temperature = st.slider("Temperature", min_value=0.0, max_value=1.0, value=0.7, step=0.05)
+            
+            auto_tokens = st.toggle("คำนวณ Max Tokens อัตโนมัติ", value=True)
+            max_tokens = 3050
+            if not auto_tokens:
+                max_tokens = st.number_input("Max Tokens", min_value=256, max_value=8192, value=3050, step=128)
+            else:
+                st.caption(f"Max Tokens ที่ระบบคำนวณ: {max_tokens}")
+
+            streaming = st.toggle("แสดงผลแบบ Live (Streaming)", value=True)
+    else:
+        # ค่าเริ่มต้นสำรองกรณีปิดแผงตั้งค่า เพื่อให้โค้ดทำงานเบื้องหลังต่อได้ปกติ
+        api_key = "ใส่_API_Key_ของคุณที่นี่"
+        base_url = "https://api.openai.com/v1"
+        model = "PSU-LLM/psu-gemma"
+        question_type = "Multiple Choice (ปรนัย)"
+        difficulty = "ง่าย"
+        number_of_questions = 5
+        temperature = 0.7
         max_tokens = 3050
-        if not auto_tokens:
-            max_tokens = st.number_input("Max Tokens", min_value=256, max_value=8192, value=3050, step=128)
-        else:
-            st.caption(f"Max Tokens ที่ระบบคำนวณ: {max_tokens}")
-
-        streaming = st.toggle("แสดงผลแบบ Live (Streaming)", value=True)
+        streaming = True
+        st.info("💡 แผงตั้งค่าถูกซ่อนอยู่ เปิดสวิตช์ด้านบนเพื่อแก้ไขการตั้งค่า")
 
 
 # หน้าหลัก (Main Area)
@@ -971,7 +988,7 @@ if uploaded_file:
         st.success(f"โหลดไฟล์สำเร็จ ({len(doc_text):,} ตัวอักษร)")
 
         if st.button("🚀 เริ่มสร้างข้อสอบ", type="primary", use_container_width=True):
-            if not api_key:
+            if not api_key or api_key == "ใส่_API_Key_ของคุณที่นี่":
                 st.error("กรุณากรอก API Key ในแถบตั้งค่าด้านซ้ายก่อน")
             else:
                 with st.spinner("🤖 กำลังสร้างข้อสอบจากเอกสาร..."):
