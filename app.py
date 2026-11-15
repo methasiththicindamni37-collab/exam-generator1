@@ -22,7 +22,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ---------- CSS ปรับสีให้ชัดเจน อ่านง่าย ----------
+# ---------- CSS ปรับสีให้ชัดเจน อ่านง่าย (เวอร์ชันเห็นชัดสุด) ----------
 st.markdown("""
 <style>
     /* พื้นหลังหลัก */
@@ -58,41 +58,48 @@ st.markdown("""
     [data-baseweb="popover"] li * { color: #0f172a !important; }
     [data-baseweb="popover"] li:hover { background-color: #e2e8f0 !important; }
 
-    /* ---------- ปรับสี Slider (เวอร์ชันใหม่: ส้มอมทอง ตัดกับตัวเลขขาว) ---------- */
-    /* เส้นฐาน (Track) - เปลี่ยนเป็นสีเทาเข้มเพื่อให้มีเส้นทางชัดเจน */
+    /* ---------- ปรับสี Slider (เวอร์ชันเห็นชัดที่สุด) ---------- */
+    /* เส้นฐาน (Track) - สีเทาเข้มชัดเจน */
     section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div {
-        background-color: #475569 !important; /* เทาเข้ม */
-        border-radius: 9999px; /* ให้ทรงแบนกลมมน */
+        background-color: #475569 !important; 
+        border-radius: 9999px; 
+        height: 8px; /* หนาขึ้น */
     }
-    /* เส้นที่ลากไปแล้ว (Fill) - เปลี่ยนเป็นสีส้มอมทอง (Amber) */
+    /* เส้นที่ลากไปแล้ว (Fill) - สีส้มสดใส ตัดกับพื้นดำ */
     section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div > div {
-        background-color: #FBBF24 !important; /* ส้มอมทอง */
+        background-color: #f59e0b !important; /* ส้ม */
         border-radius: 9999px;
     }
-    /* จุดจับ (Handle) - สีขาวขอบส้ม */
+    /* จุดจับ (Handle) - สีขาวขอบส้ม ใหญ่ขึ้น */
     section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div > div > div {
         background-color: #ffffff !important; 
-        border: 3px solid #FBBF24 !important; 
-        transition: all 0.2s ease;
+        border: 4px solid #f59e0b !important; 
+        width: 20px; /* ขยายจุดจับให้จับง่าย */
+        height: 20px;
+        margin-top: -6px;
     }
-    section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div > div > div:hover {
-        transform: scale(1.1); /* ขยายเล็กน้อยเมื่อเอาเมาส์ชี้ */
-    }
-    /* เลขจำนวน (Value) - ตัวหนา สีขาว */
+    /* กล่องตัวเลข - เปลี่ยนเป็นสีขาวล้วน ตัดกับพื้นหลังที่สุด */
     section[data-testid="stSidebar"] [data-testid="stSlider"] span {
-        color: #ffffff !important;
+        background-color: #ffffff !important;
+        color: #0f172a !important; /* ตัวหนังสือสีดำ */
         font-weight: 900 !important;
-        font-size: 1.1rem !important;
+        font-size: 1.2rem !important;
+        padding: 2px 8px !important;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2); /* มีเงาให้เห็นลอยเด่น */
     }
 
     /* ---------- Advanced Settings (Expander) ---------- */
     section[data-testid="stSidebar"] details {
         background-color: #1e293b !important;
-        border: 1px solid #3b82f6 !important;
-        border-radius: 8px;
+        border: 2px solid #3b82f6 !important; /* ขอบสีฟ้าชัดเจน */
+        border-radius: 12px;
+        margin-top: 10px;
     }
     section[data-testid="stSidebar"] details summary {
         list-style: none;
+        padding: 10px;
+        cursor: pointer;
     }
     section[data-testid="stSidebar"] details summary::-webkit-details-marker {
         display: none;
@@ -100,12 +107,14 @@ st.markdown("""
     section[data-testid="stSidebar"] details summary * { 
         color: #ffffff !important; 
         font-weight: bold;
-        padding-left: 10px;
+        font-size: 1.1rem !important;
     }
+    /* ลูกศร - เปลี่ยนเป็นสีเหลืองทองให้เด่น */
     section[data-testid="stSidebar"] details summary::after {
-        content: "➤";
+        content: "▶";
         margin-right: 10px;
-        color: #FBBF24; /* เปลี่ยนลูกศรเป็นสีส้มด้วย */
+        color: #fbbf24; /* สีเหลืองทอง */
+        font-size: 1.2rem;
     }
     section[data-testid="stSidebar"] details[open] summary::after {
         content: "▼";
@@ -128,7 +137,7 @@ st.markdown("""
     /* ---------- ปุ่ม ---------- */
     .stButton > button, .stDownloadButton > button {
         background-color: #0f172a !important;
-        border: 1px solid #ffffff !important;
+        border: 2px solid #ffffff !important;
         padding: 0.6rem 1.5rem;
         border-radius: 8px;
         font-weight: bold;
