@@ -2,6 +2,7 @@ import io
 import re
 import glob
 import html
+import json  # เพิ่มบรรทัดนี้
 import streamlit as st
 import PyPDF2
 from docx import Document
@@ -440,7 +441,7 @@ def parse_markdown_to_quiz(md_text):
     # Regex patterns
     q_pattern = re.compile(r'(?:ข้อที่|ข้อ)\.?\s*(\d+)\.?\s*(.*)', re.IGNORECASE)
     opt_pattern = re.compile(r'[กขcdn12345]\.\s*(.*)')
-    ans_pattern = re.compile(r'(?:เฉลย|Answer|key)[:\s]*([กขcdn12345])', re.IGNORECASE)
+    ans_pattern = re.compile(r'(?:เฉลย|Answer|key)[:\s]*(\w+)', re.IGNORECASE)
 
     lines = md_text.split('\n')
     
@@ -450,7 +451,7 @@ def parse_markdown_to_quiz(md_text):
         # Check for Answer Key (usually at the end or start of a block)
         ans_match = ans_pattern.search(line_stripped)
         if ans_match and current_q:
-            answer_map[current_q['id']] = ans_match.group(1).upper()
+            answer_map[current_q['id']] = ans_match.group(1)[0].upper()
 
         # Check for Question Start
         q_match = q_pattern.match(line_stripped)
@@ -470,48 +471,43 @@ def parse_markdown_to_quiz(md_text):
 
     if current_q:
         questions.append(current_q)
-        # Try to find answer for last question if not found above
-        # Sometimes answer is on the line following options
-        # We'll assume the parser needs a bit more context, but this is best effort
 
     return questions
 
 
 def generate_quiz_html(questions):
-    """Generate HTML/CSS/JS for the interactive quiz"""
+    """Generate HTML/CSS/JS for the interactive quiz using string replacement to avoid f-string errors"""
+    json_data = json.dumps(questions)
     
-    # Prepare data for JS
-    import json
-    quiz_data = json.dumps(questions)
-
-    html_content = f"""
+    # ใช้ string ธรรมดา (ไม่ใช่ f-string) เพื่อหลีกเลี่ยงปัญหาเครื่องหมาย { }
+    html_template = """
     <!DOCTYPE html>
     <html>
     <head>
     <meta charset="UTF-8">
     <style>
-        body {{ font-family: 'Sarabun', sans-serif; padding: 20px; background: #f8fafc; }}
-        .card {{ background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
-        .q-title {{ font-size: 1.1em; font-weight: bold; margin-bottom: 10px; color: #0f172a; }}
-        .option-label {{ display: block; padding: 8px; margin: 5px 0; cursor: pointer; border-radius: 4px; transition: background 0.2s; }}
-        .option-label:hover {{ background: #e2e8f0; }}
-        input[type="radio"] {{ margin-right: 10px; }}
-        .btn-check {{ background: #0f172a; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-top: 10px; }}
-        .btn-check:hover {{ background: #1d4ed8; }}
-        .result {{ margin-top: 10px; font-weight: bold; padding: 10px; border-radius: 4px; display: none; }}
-        .correct {{ background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }}
-        .wrong {{ background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }}
-        .opt-correct {{ background-color: #dcfce7 !important; border: 1px solid #86efac; }}
-        .opt-wrong {{ background-color: #fee2e2 !important; border: 1px solid #fca5a5; }}
+        body { font-family: 'Sarabun', sans-serif; padding: 20px; background: #f8fafc; }
+        .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .q-title { font-size: 1.1em; font-weight: bold; margin-bottom: 10px; color: #0f172a; }
+        .option-label { display: block; padding: 8px; margin: 5px 0; cursor: pointer; border-radius: 4px; transition: background 0.2s; }
+        .option-label:hover { background: #e2e8f0; }
+        input[type="radio"] { margin-right: 10px; }
+        .btn-check { background: #0f172a; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-top: 10px; }
+        .btn-check:hover { background: #1d4ed8; }
+        .result { margin-top: 10px; font-weight: bold; padding: 10px; border-radius: 4px; display: none; }
+        .correct { background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .wrong { background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+        .opt-correct { background-color: #dcfce7 !important; border: 1px solid #86efac; }
+        .opt-wrong { background-color: #fee2e2 !important; border: 1px solid #fca5a5; }
     </style>
     </head>
     <body>
     <div id="quiz-container"></div>
     <script>
-        const questions = {quiz_data};
+        var questions = ___DATA_PLACEHOLDER___;
         const container = document.getElementById('quiz-container');
 
-        questions.forEach((q, index) => {{
+        questions.forEach((q, index) => {
             const card = document.createElement('div');
             card.className = 'card';
 
@@ -522,7 +518,7 @@ def generate_quiz_html(questions):
 
             const optionsDiv = document.createElement('div');
             
-            q.options.forEach((opt, optIndex) => {{
+            q.options.forEach((opt, optIndex) => {
                 const label = document.createElement('label');
                 label.className = 'option-label';
                 
@@ -549,52 +545,51 @@ def generate_quiz_html(questions):
             card.appendChild(resultDiv);
 
             container.appendChild(card);
-        }});
+        });
 
-        function checkAnswer(qIndex, correctAns, optionsContainer) {{
+        function checkAnswer(qIndex, correctAns, optionsContainer) {
             const radios = optionsContainer.querySelectorAll('input[type="radio"]');
             let selectedVal = null;
             let selectedLabel = null;
             
-            radios.forEach(r => {{
-                if (r.checked) {{
+            radios.forEach(r => {
+                if (r.checked) {
                     selectedVal = r.value;
                     selectedLabel = r.parentElement;
-                }}
+                }
                 r.disabled = true;
-            }});
+            });
 
             const resultDiv = document.getElementById(`result-${qIndex}`);
             resultDiv.style.display = 'block';
 
-            if (!selectedVal) {{
+            if (!selectedVal) {
                 resultDiv.className = 'result wrong';
                 resultDiv.innerHTML = 'กรุณาเลือกคำตอบก่อนครับ';
                 return;
-            }}
+            }
 
-            if (selectedVal.toUpperCase() === correctAns.toUpperCase()) {{
+            if (selectedVal.toUpperCase() === correctAns.toUpperCase()) {
                 resultDiv.className = 'result correct';
                 resultDiv.innerHTML = '✅ ถูกต้องครับ!';
                 if(selectedLabel) selectedLabel.classList.add('opt-correct');
-            }} else {{
+            } else {
                 resultDiv.className = 'result wrong';
-                resultDiv.innerHTML = `❌ ไม่ถูกต้องครับ เฉลยคือข้อ ${correctAns}`;
+                resultDiv.innerHTML = '❌ ไม่ถูกต้องครับ เฉลยคือข้อ ' + correctAns;
                 if(selectedLabel) selectedLabel.classList.add('opt-wrong');
                 
-                // Highlight correct one
-                radios.forEach(r => {{
-                    if (r.value.toUpperCase() === correctAns.toUpperCase()) {{
+                radios.forEach(r => {
+                    if (r.value.toUpperCase() === correctAns.toUpperCase()) {
                          r.parentElement.classList.add('opt-correct');
-                    }}
-                }});
-            }}
-        }}
+                    }
+                });
+            }
+        }
     </script>
     </body>
     </html>
     """
-    return html_content
+    return html_template.replace("___DATA_PLACEHOLDER___", json_data)
 
 
 # ---------- Main ----------
