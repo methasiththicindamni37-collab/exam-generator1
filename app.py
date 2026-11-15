@@ -100,7 +100,7 @@ def generate_exam(prompt_text):
         try:
             client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
             
-            # 🔑 สำคัญ: ต้องใช้ stream=False เพื่อให้ได้ response ครั้งเดียวทั้งหมด
+            # 🔑 จุดสำคัญ: ใช้ stream=True เพื่ออ่านข้อมูลแบบ Streaming ที่ Server ส่งมา
             response = client.chat.completions.create(
                 model=model_name,
                 messages=[
@@ -109,12 +109,16 @@ def generate_exam(prompt_text):
                 ],
                 temperature=0.7,
                 max_tokens=2000,
-                stream=False  # 👈 สำคัญมาก! ต้อง stream=False
+                stream=True  # 👈 เปิดโหมด Streaming
             )
             
-            # ดึงข้อความจาก response object
-            content = response.choices[0].message.content
-            return content if content else "⚠️ ไม่ได้รับข้อความจากโมเดล"
+            # วนลูปเก็บข้อมูลทีละชิ้นส่วน (Chunk)
+            full_response = ""
+            for chunk in response:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    full_response += chunk.choices[0].delta.content
+                    
+            return full_response if full_response else "⚠️ ไม่ได้รับข้อความจากโมเดล"
             
         except Exception as e:
             return f"เกิดข้อผิดพลาด dotBlue: {e}"
