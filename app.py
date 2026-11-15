@@ -4,6 +4,7 @@ import glob
 import html
 import hashlib
 import logging
+import urllib.parse
 
 import streamlit as st
 import PyPDF2
@@ -37,6 +38,9 @@ NON_CHAT_KEYWORDS = (
     "embed", "whisper", "tts", "dall-e", "image", "moderation", "rerank"
 )
 THINK_TAGS = ("think", "thinking", "reasoning")
+
+# ลิงก์แอปที่ใช้ในปุ่มแชร์ (เปลี่ยนได้ที่นี่ หรือกำหนด APP_URL ใน Secrets)
+DEFAULT_APP_URL = "https://exam-generator1-eo7susvtggzhing8dzhvrt.streamlit.app"
 
 
 # =========================================================
@@ -85,6 +89,41 @@ st.markdown(
     footer {
         visibility: hidden !important;
         display: none !important;
+    }
+
+    /* ปุ่มแชร์ลอยอยู่มุมขวาบน */
+    .st-key-share_box {
+        position: fixed !important;
+        top: 0.7rem;
+        right: 1.2rem;
+        width: auto !important;
+        z-index: 1000002;
+    }
+    .st-key-share_box button {
+        background: #FFFFFF !important;
+        color: #1E293B !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 999px !important;
+        min-height: 2.3rem;
+        padding: 0.2rem 1rem !important;
+        font-weight: 600 !important;
+        box-shadow: 0 2px 8px rgba(15,23,42,.12);
+    }
+    .st-key-share_box button p,
+    .st-key-share_box button span { color: #1E293B !important; }
+    .st-key-share_box button:hover { border-color: #818CF8 !important; background: #EEF2FF !important; }
+
+    /* เนื้อหาในกล่องแชร์ (popover) */
+    [data-testid="stPopoverBody"],
+    [data-testid="stPopoverBody"] p,
+    [data-testid="stPopoverBody"] span,
+    [data-testid="stPopoverBody"] h5 { color: #1E293B !important; }
+
+    /* ข้อความเล็ก (caption) ใน Sidebar ให้อ่านชัด */
+    section[data-testid="stSidebar"] [data-testid="stCaptionContainer"],
+    section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] * {
+        color: #CBD5E1 !important;
+        opacity: 1 !important;
     }
 
     h1, h2, h3, h4, h5, h6 {
@@ -953,6 +992,47 @@ def friendly_api_error(error: Exception) -> str:
     return "เกิดข้อผิดพลาดในการสร้างข้อสอบ กรุณาลองใหม่อีกครั้ง"
 
 
+def get_app_url() -> str:
+    try:
+        return str(st.secrets.get("APP_URL", DEFAULT_APP_URL)) or DEFAULT_APP_URL
+    except Exception:
+        return DEFAULT_APP_URL
+
+
+def share_link(label: str, url: str):
+    if hasattr(st, "link_button"):
+        st.link_button(label, url, use_container_width=True)
+    else:
+        st.markdown(f"[{label}]({url})")
+
+
+def render_share_button():
+    """ปุ่มแชร์มุมขวาบน: คัดลอกลิงก์ / ส่งต่อทาง LINE, Facebook, X, อีเมล"""
+    app_url = get_app_url()
+    message = "ลองใช้ระบบสร้างข้อสอบด้วย AI สร้างข้อสอบจากเอกสารพร้อมเฉลยและคะแนน"
+    enc_url = urllib.parse.quote(app_url, safe="")
+    enc_msg = urllib.parse.quote(message, safe="")
+
+    try:
+        box = st.container(key="share_box")
+    except TypeError:  # Streamlit เวอร์ชันเก่าไม่รองรับ key
+        _, box = st.columns([5, 1])
+
+    with box:
+        if hasattr(st, "popover"):
+            holder = st.popover("🔗 แชร์")
+        else:
+            holder = st.expander("🔗 แชร์")
+        with holder:
+            st.markdown("##### แชร์แอปนี้")
+            st.caption("กดไอคอนคัดลอกที่มุมขวาของกล่องลิงก์ แล้วส่งให้เพื่อนได้เลย")
+            st.code(app_url, language=None)
+            share_link("💬 ส่งทาง LINE", f"https://social-plugins.line.me/lineit/share?url={enc_url}")
+            share_link("📘 แชร์ Facebook", f"https://www.facebook.com/sharer/sharer.php?u={enc_url}")
+            share_link("✖️ แชร์ X (Twitter)", f"https://twitter.com/intent/tweet?url={enc_url}&text={enc_msg}")
+            share_link("✉️ ส่งทางอีเมล", f"mailto:?subject={enc_msg}&body={enc_msg}%20{enc_url}")
+
+
 # =========================================================
 # Sidebar settings
 # =========================================================
@@ -1014,6 +1094,8 @@ with st.sidebar.expander("🔧 ตั้งค่าการสร้างข�
 # =========================================================
 # Main page
 # =========================================================
+render_share_button()
+
 st.markdown(
     """
     <div class="hero-card">
