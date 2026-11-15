@@ -2,11 +2,13 @@ import io
 import re
 import glob
 import html
+import json
 import hashlib
 import logging
 import urllib.parse
 
 import streamlit as st
+import streamlit.components.v1 as components
 import PyPDF2
 from docx import Document
 from openai import OpenAI
@@ -1046,6 +1048,50 @@ def share_link(label: str, url: str):
         st.markdown(f"[{label}]({url})")
 
 
+def copy_link_box(url: str):
+    """ช่องลิงก์ + ปุ่มคัดลอก ที่ใช้ได้แม้แอปรันใน iframe
+    (ลอง Clipboard API ก่อน ถ้าถูกบล็อกจะ fallback เป็น execCommand)"""
+    components.html(
+        f"""
+        <div style="display:flex;gap:8px;align-items:center;font-family:sans-serif;">
+          <input id="link" type="text" readonly value="{html.escape(url, quote=True)}"
+                 style="flex:1;min-width:0;padding:9px 10px;border:1px solid #CBD5E1;
+                        border-radius:8px;font-size:13px;color:#1E293B;background:#F8FAFC;">
+          <button id="copy"
+                  style="padding:9px 14px;border:0;border-radius:8px;background:#4F46E5;
+                         color:#fff;font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap;">
+            📋 คัดลอกลิงก์
+          </button>
+        </div>
+        <script>
+          const url = {json.dumps(url)};
+          const btn = document.getElementById('copy');
+          const input = document.getElementById('link');
+          const original = btn.textContent;
+
+          btn.addEventListener('click', async () => {{
+            let ok = false;
+            try {{
+              await navigator.clipboard.writeText(url);
+              ok = true;
+            }} catch (e) {{}}
+
+            if (!ok) {{
+              input.focus();
+              input.select();
+              input.setSelectionRange(0, 99999);
+              try {{ ok = document.execCommand('copy'); }} catch (e) {{}}
+            }}
+
+            btn.textContent = ok ? '✅ คัดลอกแล้ว' : '⚠️ คัดลอกไม่ได้ กดค้างที่ช่องลิงก์แล้วเลือกคัดลอก';
+            setTimeout(() => {{ btn.textContent = original; }}, 2500);
+          }});
+        </script>
+        """,
+        height=56,
+    )
+
+
 def render_share_button():
     """ปุ่มแชร์มุมขวาบน: คัดลอกลิงก์ / ส่งต่อทาง LINE, Facebook, X, อีเมล"""
     app_url = get_app_url()
@@ -1065,12 +1111,12 @@ def render_share_button():
             holder = st.expander("🔗 แชร์")
         with holder:
             st.markdown("##### แชร์แอปนี้")
-            st.caption("กดไอคอนคัดลอกที่มุมขวาของกล่องลิงก์ แล้วส่งให้เพื่อนได้เลย")
-            st.code(app_url, language=None)
+            st.caption("กดปุ่มคัดลอกลิงก์ แล้วส่งให้เพื่อนได้เลย")
+            copy_link_box(app_url)
             share_link("💬 ส่งทาง LINE", f"https://social-plugins.line.me/lineit/share?url={enc_url}")
             share_link("📘 แชร์ Facebook", f"https://www.facebook.com/sharer/sharer.php?u={enc_url}")
             share_link("✖️ แชร์ X (Twitter)", f"https://twitter.com/intent/tweet?url={enc_url}&text={enc_msg}")
-            share_link("✉️ ส่งทางอีเมล", f"mailto:?subject={enc_msg}&body={enc_msg}%20{enc_url}")
+            share_link("✉️ ส่งทางอีเมล", f"mailto:?subject={enc_msg}&body={enc_msg}%0A%0A{enc_url}%0A")
 
 
 def render_settings_toggle():
