@@ -4,10 +4,9 @@ import PyPDF2
 from docx import Document
 from openai import OpenAI
 
-# ตั้งค่าหน้าเว็บ
 st.set_page_config(page_title="AI Exam Generator", page_icon="🤖", layout="wide")
 
-# ---------- UI (CSS) ----------
+# ---------- UI ----------
 st.markdown("""
 <style>
     .stApp { background-color: #ffffff; }
@@ -100,8 +99,9 @@ def generate_exam(prompt_text):
         try:
             client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
             
-            # 🔑 จุดสำคัญ: ใช้ stream=True เพื่ออ่านข้อมูลแบบ Streaming ที่ Server ส่งมา
-            response = client.chat.completions.create(
+            # 🔑 จุดสำคัญ: ใช้ stream=True เพื่อให้รองรับโมเดลทั้งหมด (Anthropic, DeepSeek, OpenAI, ฯลฯ)
+            # เพราะ Server ของ PSU ส่งข้อมูลกลับแบบ Streaming
+            response_stream = client.chat.completions.create(
                 model=model_name,
                 messages=[
                     {"role": "system", "content": "คุณคือครูผู้เชี่ยวชาญ"},
@@ -109,19 +109,23 @@ def generate_exam(prompt_text):
                 ],
                 temperature=0.7,
                 max_tokens=2000,
-                stream=True  # 👈 เปิดโหมด Streaming
+                stream=True
             )
             
             # วนลูปเก็บข้อมูลทีละชิ้นส่วน (Chunk)
             full_response = ""
-            for chunk in response:
+            for chunk in response_stream:
                 if chunk.choices and chunk.choices[0].delta.content:
                     full_response += chunk.choices[0].delta.content
                     
             return full_response if full_response else "⚠️ ไม่ได้รับข้อความจากโมเดล"
             
         except Exception as e:
-            return f"เกิดข้อผิดพลาด dotBlue: {e}"
+            # 🔍 ดักจับ Error 429 (Credit หมด)
+            error_msg = str(e)
+            if "429" in error_msg or "rate limit" in error_msg.lower():
+                return "⛔ หมดวันใช้งาน (Credit Limit) ค่ะ... กรุณาลองใหม่หลัง 00:00 น."
+            return f"⚠️ Error: {e}"
 
     if not GOOGLE_KEY:
         return "⚠️ ยังไม่ได้ตั้ง GOOGLE_API_KEY ใน Secrets"
