@@ -14,58 +14,75 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.fonts import addMapping
 
+# ตั้งค่าหน้าเว็บให้เป็นโหมดสว่าง
 st.set_page_config(
-    page_title="ระบบสร้างข้อสอบ/แบบฝึกหัด", page_icon="📝", layout="wide"
+    page_title="ระบบสร้างข้อสอบ/แบบฝึกหัด", 
+    page_icon="📝", 
+    layout="wide"
 )
 
-# ---------- UI (CSS) ----------
+# ---------- CSS ปรับสีให้ชัดเจน อ่านง่าย ----------
 st.markdown("""
 <style>
-    .stApp { background-color: #ffffff; }
-    h1, h2, h3, h4, h5, h6, p, label, li, th, td, span { color: #0f172a; }
+    /* พื้นหลังหลักสีขาว ตัวหนังสือสีดำ */
+    .stApp { background-color: #ffffff; color: #0f172a; }
+    h1, h2, h3, h4, h5, h6, p, label, li, th, td, span, a, div { color: #0f172a !important; }
 
-    /* ---------- Sidebar ---------- */
+    /* ---------- Sidebar สีกรมท่าเข้ม ---------- */
     section[data-testid="stSidebar"] { background-color: #0f172a !important; }
+    
+    /* ข้อความใน Sidebar ให้เป็นขาว */
     section[data-testid="stSidebar"] h1,
     section[data-testid="stSidebar"] h2,
     section[data-testid="stSidebar"] h3,
     section[data-testid="stSidebar"] label,
     section[data-testid="stSidebar"] p,
-    section[data-testid="stSidebar"] span { color: #ffffff !important; }
+    section[data-testid="stSidebar"] span,
+    section[data-testid="stSidebar"] div { color: #ffffff !important; }
 
-    /* กล่องเลือก / ช่องกรอกใน Sidebar: พื้นขาว ตัวอักษรเข้ม */
-    section[data-testid="stSidebar"] [data-baseweb="select"] > div,
-    section[data-testid="stSidebar"] [data-baseweb="input"],
-    section[data-testid="stSidebar"] [data-baseweb="base-input"],
-    section[data-testid="stSidebar"] input {
+    /* กล่องเลือก / ช่องกรอก ใน Sidebar: พื้นขาว ตัวอักษรเข้ม */
+    section[data-testid="stSidebar"] [data-baseweb="select"],
+    section[data-testid="stSidebar"] input[type="text"],
+    section[data-testid="stSidebar"] input[type="number"],
+    section[data-testid="stSidebar"] input[type="range"] {
         background-color: #ffffff !important;
         color: #0f172a !important;
+        border: 1px solid #cbd5e1 !important;
     }
-    section[data-testid="stSidebar"] [data-baseweb="select"] *,
-    section[data-testid="stSidebar"] input {
-        color: #0f172a !important;
-        -webkit-text-fill-color: #0f172a !important;
-    }
+    
+    /* ไอคอนและลูกศรในช่องเลือก */
     section[data-testid="stSidebar"] [data-baseweb="select"] svg { fill: #0f172a !important; }
-
-    /* กล่องตั้งค่าขั้นสูง */
-    section[data-testid="stSidebar"] details {
-        background-color: #1e293b !important;
-        border: 1px solid #475569 !important;
-        border-radius: 8px;
-    }
-    section[data-testid="stSidebar"] details summary * { color: #ffffff !important; }
-
-    /* รายการตัวเลือกที่เด้งลงมา */
+    
+    /* รายการตัวเลือกที่เด้งลงมา (Dropdown) */
     [data-baseweb="popover"] ul,
     [data-baseweb="popover"] li { background-color: #ffffff !important; }
     [data-baseweb="popover"] li,
     [data-baseweb="popover"] li * { color: #0f172a !important; }
     [data-baseweb="popover"] li:hover { background-color: #e2e8f0 !important; }
 
+    /* ---------- ปรับสี Slider ให้เห็นชัด ---------- */
+    /* เส้นฐานของ Slider */
+    section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div {
+        background-color: #334155 !important;
+    }
+    /* เส้นที่ลากไปแล้ว (Fill) */
+    section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div > div {
+        background-color: #00ffff !important; /* สีฟ้าสดใส */
+    }
+    /* จุดจับ (Handle) */
+    section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div > div > div {
+        background-color: #ffffff !important; /* สีขาว */
+        border: 2px solid #00ffff !important; /* ขอบสีฟ้า */
+    }
+    /* เลขจำนวน */
+    section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div > div > div > span {
+        color: #ffffff !important;
+        font-weight: bold;
+    }
+
     /* ---------- ช่องอัปโหลดไฟล์ ---------- */
     [data-testid="stFileUploader"] section {
-        background-color: #f1f5f9 !important;
+        background-color: #f8fafc !important;
         border: 2px dashed #64748b !important;
     }
     [data-testid="stFileUploader"] section *,
@@ -83,11 +100,13 @@ st.markdown("""
         border: none !important;
         padding: 0.6rem 1.5rem;
         border-radius: 8px;
-    }
-    .stButton > button *, .stDownloadButton > button *,
-    .stButton > button p, .stDownloadButton > button p {
-        color: #ffffff !important;
         font-weight: bold;
+    }
+    /* บังคับให้ตัวหนังสือและไอคอนปุ่มเป็นสีขาว */
+    .stButton > button *, .stDownloadButton > button *,
+    .stButton > button p, .stDownloadButton > button p,
+    .stButton > button span, .stDownloadButton > button span {
+        color: #ffffff !important;
         font-size: 1.05rem;
     }
     .stButton > button:hover, .stDownloadButton > button:hover {
@@ -139,10 +158,11 @@ model_name = ""
 if API_KEY:
     all_models = list_models(API_KEY, BASE_URL)
     chat_models = [m for m in all_models if is_chat_model(m)] or all_models
+    
     if chat_models:
         model_name = st.sidebar.selectbox("เลือกโมเดล", chat_models)
     else:
-        st.sidebar.warning("ไม่พบรายการโมเดล (อาจเป็นปัญหาการเชื่อมต่อ)")
+        st.sidebar.warning("ไม่พบรายการโมเดล")
         model_name = st.sidebar.text_input("พิมพ์ชื่อโมเดลเอง")
 else:
     model_name = st.sidebar.text_input("พิมพ์ชื่อโมเดลเอง")
@@ -228,7 +248,6 @@ def make_docx(markdown_text: str) -> bytes:
 
 
 _FONT_CANDIDATES = [
-    # (ชื่อฟอนต์, ไฟล์ปกติ, ไฟล์ตัวหนา)
     ("Garuda", "Garuda.ttf", "Garuda-Bold.ttf"),
     ("Loma", "Loma.ttf", "Loma-Bold.ttf"),
     ("Norasi", "Norasi.ttf", "Norasi-Bold.ttf"),
@@ -254,7 +273,6 @@ def _find_file(filename):
 
 @st.cache_resource(show_spinner=False)
 def register_thai_font():
-    """ลงทะเบียนฟอนต์ไทยให้ reportlab คืนค่า (ชื่อปกติ, ชื่อหนา) หรือ None"""
     for name, reg, bold in _FONT_CANDIDATES:
         reg_path = _find_file(reg)
         if not reg_path:
@@ -277,7 +295,6 @@ def register_thai_font():
 
 
 def make_pdf(markdown_text: str):
-    """สร้าง PDF คืนค่า bytes หรือ None ถ้าไม่มีฟอนต์ไทย"""
     fonts = register_thai_font()
     if not fonts:
         return None
@@ -449,7 +466,11 @@ if uploaded_file is not None:
 กรุณาสร้างข้อสอบ {num_questions} ข้อ ในรูปแบบ {question_type} ระดับความยาก {difficulty}
 ข้อกำหนด:
 1. ข้อสอบต้องอิงจากเนื้อหาในเอกสารเท่านั้น
-2. หากเป็นข้อสอบปรนัย ต้องมีตัวเลือก ก. ข. ค. ง.
+2. หากเป็นข้อสอบปรนัย ให้เขียนตัวเลือกเรียงลงมาด้านล่าง ดังนี้:
+   ก. [ข้อความคำตอบ]
+   ข. [ข้อความคำตอบ]
+   ค. [ข้อความคำตอบ]
+   ง. [ข้อความคำตอบ]
 3. ด้านล่างสุดต้องมี "เฉลย" แยกออกมาชัดเจน
 4. ใช้ภาษาไทยทางการ
 5. จัดรูปแบบ Markdown ให้สวยงาม
