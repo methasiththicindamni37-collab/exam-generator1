@@ -29,7 +29,7 @@ st.set_page_config(
     page_title="AI Exam Generator Pro",
     page_icon="🎓",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",
 )
 
 logging.basicConfig(level=logging.ERROR)
@@ -96,11 +96,14 @@ st.markdown(
         display: none !important;
     }
 
-    /* ปุ่มพับ/ขยาย Sidebar เดิมของ Streamlit: ซ่อนไว้ เพราะใช้ปุ่มสไลด์ของเราแทน */
-    [data-testid="stSidebarCollapseButton"],
-    [data-testid="stSidebarCollapsedControl"],
-    [data-testid="collapsedControl"] {
-        display: none !important;
+    /* ปุ่มพับ/ขยาย Sidebar เดิมของ Streamlit: ซ่อนเฉพาะบนจอคอมพิวเตอร์
+       (บนมือถือใช้ปุ่มเดิมของ Streamlit เพราะ Sidebar เป็นแผงที่เลื่อนทับหน้าจอ) */
+    @media (min-width: 769px) {
+        [data-testid="stSidebarCollapseButton"],
+        [data-testid="stSidebarCollapsedControl"],
+        [data-testid="collapsedControl"] {
+            display: none !important;
+        }
     }
 
     /* ปุ่มแชร์ลอยอยู่มุมขวาบน */
@@ -398,6 +401,10 @@ st.markdown(
     }
 
     @media (max-width: 768px) {
+        /* มือถือ: ซ่อนปุ่มสไลด์ของเรา แล้วใช้ลูกศรเปิด/ปิดตั้งค่าของ Streamlit มุมซ้ายบนแทน */
+        .st-key-settings_toggle {
+            display: none !important;
+        }
         .main .block-container {
             padding: 3.8rem .8rem 2rem;
         }
@@ -1124,27 +1131,32 @@ def render_settings_toggle():
     และปุ่มจะเลื่อนตามขอบ Sidebar"""
     is_open = st.session_state.show_settings
 
+    # กฎสไลด์ใช้เฉพาะจอคอมพิวเตอร์ (>= 769px) บนมือถือให้ Streamlit จัดการเอง
     if is_open:
         css = f"""
         <style>
-        section[data-testid="stSidebar"] {{
-            margin-left: 0;
-            visibility: visible;
-            transition: margin-left .3s ease, visibility 0s linear 0s;
+        @media (min-width: 769px) {{
+            section[data-testid="stSidebar"] {{
+                margin-left: 0;
+                visibility: visible;
+                transition: margin-left .3s ease, visibility 0s linear 0s;
+            }}
+            .st-key-settings_toggle {{ left: calc({SIDEBAR_WIDTH} + .75rem); }}
         }}
-        .st-key-settings_toggle {{ left: calc({SIDEBAR_WIDTH} + .75rem); }}
         </style>
         """
         label = "◀ ซ่อนการตั้งค่า"
     else:
         css = f"""
         <style>
-        section[data-testid="stSidebar"] {{
-            margin-left: calc(-1 * {SIDEBAR_WIDTH});
-            visibility: hidden;
-            transition: margin-left .3s ease, visibility 0s linear .3s;
+        @media (min-width: 769px) {{
+            section[data-testid="stSidebar"] {{
+                margin-left: calc(-1 * {SIDEBAR_WIDTH});
+                visibility: hidden;
+                transition: margin-left .3s ease, visibility 0s linear .3s;
+            }}
+            .st-key-settings_toggle {{ left: .75rem; }}
         }}
-        .st-key-settings_toggle {{ left: .75rem; }}
         </style>
         """
         label = "⚙️ ตั้งค่า ▶"
