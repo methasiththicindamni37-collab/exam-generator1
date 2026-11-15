@@ -1,31 +1,105 @@
 import io
 import re
+import glob
+import html
 import streamlit as st
 import PyPDF2
 from docx import Document
 from openai import OpenAI
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.units import cm
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.fonts import addMapping
 
-st.set_page_config(page_title="AI Exam Generator", page_icon="🤖", layout="wide")
+st.set_page_config(
+    page_title="ระบบสร้างข้อสอบ/แบบฝึกหัด", page_icon="📝", layout="wide"
+)
 
 # ---------- UI (CSS) ----------
 st.markdown("""
 <style>
     .stApp { background-color: #ffffff; }
-    h1, h2, h3, h4, h5, h6, p, label, li, th, td { color: #000000 !important; }
+    h1, h2, h3, h4, h5, h6, p, label, li, th, td, span { color: #0f172a; }
+
+    /* ---------- Sidebar ---------- */
     section[data-testid="stSidebar"] { background-color: #0f172a !important; }
-    section[data-testid="stSidebar"] * { color: #ffffff !important; }
-    section[data-testid="stSidebar"] input,
-    section[data-testid="stSidebar"] [data-baseweb="select"] * { color: #000000 !important; }
-    .stButton>button, .stDownloadButton>button {
-        background-color: #0f172a !important; color: #ffffff !important;
-        font-weight: bold; font-size: 1.1rem; padding: 0.6rem 1.5rem; border: none;
+    section[data-testid="stSidebar"] h1,
+    section[data-testid="stSidebar"] h2,
+    section[data-testid="stSidebar"] h3,
+    section[data-testid="stSidebar"] label,
+    section[data-testid="stSidebar"] p,
+    section[data-testid="stSidebar"] span { color: #ffffff !important; }
+
+    /* กล่องเลือก / ช่องกรอกใน Sidebar: พื้นขาว ตัวอักษรเข้ม */
+    section[data-testid="stSidebar"] [data-baseweb="select"] > div,
+    section[data-testid="stSidebar"] [data-baseweb="input"],
+    section[data-testid="stSidebar"] [data-baseweb="base-input"],
+    section[data-testid="stSidebar"] input {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
     }
-    .stButton>button:hover, .stDownloadButton>button:hover { background-color: #1e293b !important; }
+    section[data-testid="stSidebar"] [data-baseweb="select"] *,
+    section[data-testid="stSidebar"] input {
+        color: #0f172a !important;
+        -webkit-text-fill-color: #0f172a !important;
+    }
+    section[data-testid="stSidebar"] [data-baseweb="select"] svg { fill: #0f172a !important; }
+
+    /* กล่องตั้งค่าขั้นสูง */
+    section[data-testid="stSidebar"] details {
+        background-color: #1e293b !important;
+        border: 1px solid #475569 !important;
+        border-radius: 8px;
+    }
+    section[data-testid="stSidebar"] details summary * { color: #ffffff !important; }
+
+    /* รายการตัวเลือกที่เด้งลงมา */
+    [data-baseweb="popover"] ul,
+    [data-baseweb="popover"] li { background-color: #ffffff !important; }
+    [data-baseweb="popover"] li,
+    [data-baseweb="popover"] li * { color: #0f172a !important; }
+    [data-baseweb="popover"] li:hover { background-color: #e2e8f0 !important; }
+
+    /* ---------- ช่องอัปโหลดไฟล์ ---------- */
+    [data-testid="stFileUploader"] section {
+        background-color: #f1f5f9 !important;
+        border: 2px dashed #64748b !important;
+    }
+    [data-testid="stFileUploader"] section *,
+    [data-testid="stFileUploaderFile"] * { color: #0f172a !important; }
+    [data-testid="stFileUploader"] section button {
+        background-color: #ffffff !important;
+        border: 1px solid #0f172a !important;
+    }
+    [data-testid="stFileUploader"] section button * { color: #0f172a !important; }
+    [data-testid="stFileUploader"] svg { fill: #0f172a !important; }
+
+    /* ---------- ปุ่ม: พื้นกรมท่า ตัวอักษรขาว ---------- */
+    .stButton > button, .stDownloadButton > button {
+        background-color: #0f172a !important;
+        border: none !important;
+        padding: 0.6rem 1.5rem;
+        border-radius: 8px;
+    }
+    .stButton > button *, .stDownloadButton > button *,
+    .stButton > button p, .stDownloadButton > button p {
+        color: #ffffff !important;
+        font-weight: bold;
+        font-size: 1.05rem;
+    }
+    .stButton > button:hover, .stDownloadButton > button:hover {
+        background-color: #1d4ed8 !important;
+    }
+
+    /* ---------- กล่องแจ้งเตือน ---------- */
+    [data-testid="stAlert"] * { color: #0f172a !important; }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🤖 AI Exam Generator")
-st.markdown("### 📌 ระบบสร้างข้อสอบอัจฉริยะ")
+st.title("📝 ระบบสร้างข้อสอบ/แบบฝึกหัด")
 
 # ---------- Secrets ----------
 API_KEY = st.secrets.get("OPENAI_API_KEY", "")
@@ -33,13 +107,11 @@ BASE_URL = st.secrets.get("OPENAI_BASE_URL", "https://ai.psu.blue/v1")
 
 MAX_CHARS = 30000
 
-# คำที่บ่งบอกว่าไม่ใช่โมเดลแชต
 NON_CHAT_KEYWORDS = (
     "embed", "whisper", "tts", "dall-e", "dalle", "image", "moderation",
     "rerank", "transcribe", "audio", "speech", "stable-diffusion", "sdxl", "flux",
 )
 
-# ชื่อแท็กความคิด (reasoning) ที่โมเดลบางตัวส่งออกมา
 THINK_TAGS = ("think", "thinking", "reasoning")
 
 
@@ -59,22 +131,16 @@ def is_chat_model(model_id: str) -> bool:
 
 # ---------- Sidebar ----------
 st.sidebar.header("⚙️ การตั้งค่า")
-st.sidebar.subheader("🔑 สถานะ API Key")
 
-if API_KEY:
-    st.sidebar.success("✅ พบ API Key")
-else:
+if not API_KEY:
     st.sidebar.error("❌ ยังไม่ได้ตั้ง OPENAI_API_KEY ใน Secrets")
 
 model_name = ""
 if API_KEY:
     all_models = list_models(API_KEY, BASE_URL)
-    if all_models:
-        show_all = st.sidebar.checkbox("แสดงโมเดลทั้งหมด (รวมที่ไม่ใช่แชต)", value=False)
-        models = all_models if show_all else [m for m in all_models if is_chat_model(m)]
-        if not models:
-            models = all_models
-        model_name = st.sidebar.selectbox("เลือกโมเดล", models)
+    chat_models = [m for m in all_models if is_chat_model(m)] or all_models
+    if chat_models:
+        model_name = st.sidebar.selectbox("เลือกโมเดล", chat_models)
     else:
         st.sidebar.warning("ไม่พบรายการโมเดล (อาจเป็นปัญหาการเชื่อมต่อ)")
         model_name = st.sidebar.text_input("พิมพ์ชื่อโมเดลเอง")
@@ -127,35 +193,33 @@ def clean_output(text: str) -> str:
         open_t = "<" + name + ">"
         close_t = "<" + "/" + name + ">"
 
-        # 1) ตัดบล็อกที่มีทั้งเปิดและปิด
         pattern = re.escape(open_t) + r".*?" + re.escape(close_t)
         text = re.sub(pattern, "", text, flags=re.DOTALL | re.IGNORECASE)
 
-        # 2) มีแต่แท็กปิด (บางโมเดลไม่ส่งแท็กเปิด) -> เก็บเฉพาะส่วนหลังแท็กปิด
         idx = text.lower().rfind(close_t)
         if idx != -1:
             text = text[idx + len(close_t):]
 
-        # 3) มีแท็กเปิดแต่ยังไม่ปิด (ระหว่างสตรีม) -> ซ่อนส่วนที่ค้างไว้ก่อน
         oi = text.lower().find(open_t)
         if oi != -1:
             text = text[:oi]
     return text.strip()
 
 
+# ---------- ไฟล์ดาวน์โหลด ----------
 def make_docx(markdown_text: str) -> bytes:
     doc = Document()
-    doc.add_heading("ข้อสอบ", level=1)
+    doc.add_heading("ข้อสอบ/แบบฝึกหัด", level=1)
     for line in markdown_text.splitlines():
         stripped = line.strip()
-        if not stripped:
+        if not stripped or set(stripped) <= set("-|: "):
             continue
         if stripped.startswith("### "):
-            doc.add_heading(stripped[4:], level=3)
+            doc.add_heading(stripped[4:].replace("**", ""), level=3)
         elif stripped.startswith("## "):
-            doc.add_heading(stripped[3:], level=2)
+            doc.add_heading(stripped[3:].replace("**", ""), level=2)
         elif stripped.startswith("# "):
-            doc.add_heading(stripped[2:], level=1)
+            doc.add_heading(stripped[2:].replace("**", ""), level=1)
         else:
             doc.add_paragraph(stripped.replace("**", ""))
     buf = io.BytesIO()
@@ -163,12 +227,116 @@ def make_docx(markdown_text: str) -> bytes:
     return buf.getvalue()
 
 
+_FONT_CANDIDATES = [
+    # (ชื่อฟอนต์, ไฟล์ปกติ, ไฟล์ตัวหนา)
+    ("Garuda", "Garuda.ttf", "Garuda-Bold.ttf"),
+    ("Loma", "Loma.ttf", "Loma-Bold.ttf"),
+    ("Norasi", "Norasi.ttf", "Norasi-Bold.ttf"),
+    ("Waree", "Waree.ttf", "Waree-Bold.ttf"),
+    ("Kinnari", "Kinnari.ttf", "Kinnari-Bold.ttf"),
+]
+_FONT_DIRS = [
+    "/usr/share/fonts/truetype/tlwg",
+    "/usr/share/fonts/truetype",
+    "/usr/share/fonts",
+    ".",
+    "fonts",
+]
+
+
+def _find_file(filename):
+    for d in _FONT_DIRS:
+        hits = glob.glob(f"{d}/**/{filename}", recursive=True)
+        if hits:
+            return hits[0]
+    return None
+
+
+@st.cache_resource(show_spinner=False)
+def register_thai_font():
+    """ลงทะเบียนฟอนต์ไทยให้ reportlab คืนค่า (ชื่อปกติ, ชื่อหนา) หรือ None"""
+    for name, reg, bold in _FONT_CANDIDATES:
+        reg_path = _find_file(reg)
+        if not reg_path:
+            continue
+        try:
+            pdfmetrics.registerFont(TTFont(name, reg_path))
+            bold_name = name
+            bold_path = _find_file(bold)
+            if bold_path:
+                bold_name = name + "-Bold"
+                pdfmetrics.registerFont(TTFont(bold_name, bold_path))
+            addMapping(name, 0, 0, name)
+            addMapping(name, 1, 0, bold_name)
+            addMapping(name, 0, 1, name)
+            addMapping(name, 1, 1, bold_name)
+            return name, bold_name
+        except Exception:
+            continue
+    return None
+
+
+def make_pdf(markdown_text: str):
+    """สร้าง PDF คืนค่า bytes หรือ None ถ้าไม่มีฟอนต์ไทย"""
+    fonts = register_thai_font()
+    if not fonts:
+        return None
+    base, bold = fonts
+
+    body = ParagraphStyle("body", fontName=base, fontSize=12, leading=20, spaceAfter=4)
+    h1 = ParagraphStyle("h1", parent=body, fontName=bold, fontSize=18, leading=26, spaceAfter=8)
+    h2 = ParagraphStyle("h2", parent=body, fontName=bold, fontSize=15, leading=22, spaceBefore=6, spaceAfter=6)
+    h3 = ParagraphStyle("h3", parent=body, fontName=bold, fontSize=13, leading=20, spaceBefore=4, spaceAfter=4)
+
+    def to_markup(s):
+        s = html.escape(s, quote=False)
+        s = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", s)
+        s = s.replace("**", "")
+        return s
+
+    story = [Paragraph("ข้อสอบ/แบบฝึกหัด", h1), Spacer(1, 6)]
+    for line in markdown_text.splitlines():
+        s = line.strip()
+        if not s:
+            story.append(Spacer(1, 4))
+            continue
+        if set(s) <= set("-|: "):
+            if s.startswith("---"):
+                story.append(Spacer(1, 6))
+            continue
+
+        style = body
+        if s.startswith("### "):
+            style, s = h3, s[4:]
+        elif s.startswith("## "):
+            style, s = h2, s[3:]
+        elif s.startswith("# "):
+            style, s = h1, s[2:]
+        elif s.startswith(("- ", "* ")):
+            s = "• " + s[2:]
+        elif s.startswith("|"):
+            s = "   ".join(c.strip() for c in s.strip("|").split("|"))
+
+        try:
+            story.append(Paragraph(to_markup(s), style))
+        except Exception:
+            story.append(Paragraph(html.escape(s.replace("**", ""), quote=False), body))
+
+    buf = io.BytesIO()
+    SimpleDocTemplate(
+        buf, pagesize=A4,
+        leftMargin=2 * cm, rightMargin=2 * cm, topMargin=2 * cm, bottomMargin=2 * cm,
+        title="ข้อสอบ/แบบฝึกหัด",
+    ).build(story)
+    return buf.getvalue()
+
+
+# ---------- เรียกโมเดล ----------
 def _err_text(e) -> str:
     return str(e).lower()
 
 
 def _call_api(client, model, messages, params, stream, placeholder):
-    """เรียก API หนึ่งครั้งด้วยพารามิเตอร์ที่กำหนด"""
     if stream:
         resp = client.chat.completions.create(
             model=model, messages=messages, stream=True, **params
@@ -202,7 +370,6 @@ def generate_exam(prompt_text, placeholder=None):
 
     client = OpenAI(api_key=API_KEY, base_url=BASE_URL, timeout=180, max_retries=1)
 
-    # ลำดับการลองแบบถอยหลัง (fallback) เพื่อให้ใช้ได้กับหลายโมเดล
     system_modes = ["system", "merged"]
     param_variants = [
         {"temperature": temperature, "max_tokens": tokens},
@@ -234,7 +401,6 @@ def generate_exam(prompt_text, placeholder=None):
                 except Exception as e:
                     last_error = e
                     msg = _err_text(e)
-                    # ข้อผิดพลาดที่ลองใหม่ก็ไม่ช่วย
                     if any(k in msg for k in (
                         "401", "invalid api key", "incorrect api key", "authentication"
                     )):
@@ -247,7 +413,6 @@ def generate_exam(prompt_text, placeholder=None):
                         "404", "model_not_found", "does not exist"
                     )):
                         return f"⚠️ ไม่พบโมเดล `{model_name}` หรือไม่มีสิทธิ์ใช้งาน"
-                    # นอกนั้นลองรูปแบบถัดไป
                     continue
 
     return f"⚠️ Error: {last_error}"
@@ -298,18 +463,21 @@ if uploaded_file is not None:
         placeholder.markdown(result)
         st.session_state.exam_result = result
 
-    # แสดงผลล่าสุด + ปุ่มดาวน์โหลด (กรณีหน้า rerun)
     result = st.session_state.exam_result
     if result and not result.startswith(("⚠️", "⛔")):
+        pdf_bytes = make_pdf(result)
         d1, d2 = st.columns(2)
         with d1:
-            st.download_button(
-                "⬇️ ดาวน์โหลด (.md)", result.encode("utf-8"),
-                file_name="exam.md", mime="text/markdown",
-            )
+            if pdf_bytes:
+                st.download_button(
+                    "⬇️ ดาวน์โหลด PDF", pdf_bytes,
+                    file_name="exam.pdf", mime="application/pdf",
+                )
+            else:
+                st.warning("สร้าง PDF ไม่ได้: ไม่พบฟอนต์ไทย (เพิ่มไฟล์ packages.txt ที่มี fonts-thai-tlwg แล้ว Reboot)")
         with d2:
             st.download_button(
-                "⬇️ ดาวน์โหลด (.docx)", make_docx(result),
+                "⬇️ ดาวน์โหลด DOCX", make_docx(result),
                 file_name="exam.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             )
