@@ -2,7 +2,7 @@ import io
 import re
 import glob
 import html
-import json  # เพิ่มบรรทัดนี้
+import json
 import streamlit as st
 import PyPDF2
 from docx import Document
@@ -15,24 +15,22 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.fonts import addMapping
 
-# ตั้งค่าหน้าเว็บให้เป็นโหมดสว่าง
 st.set_page_config(
     page_title="ระบบสร้างข้อสอบ/แบบฝึกหัด", 
     page_icon="📝", 
     layout="wide"
 )
 
-# ---------- CSS ปรับสีให้ชัดเจน อ่านง่าย (เวอร์ชันเห็นชัดสุด) ----------
+# ---------- CSS แบบเรียบง่าย อ่านง่ายที่สุด ----------
 st.markdown("""
 <style>
     /* พื้นหลังหลัก */
     .stApp { background-color: #ffffff; color: #0f172a; }
-    h1, h2, h3, h4, h5, h6, p, label, li, th, td, span, a, div { color: #0f172a !important; }
-
-    /* ---------- Sidebar สีกรมท่าเข้ม ---------- */
-    section[data-testid="stSidebar"] { background-color: #0f172a !important; }
     
-    /* ข้อความใน Sidebar ให้เป็นขาว */
+    /* ---------- Sidebar สีเทาเข้ม ---------- */
+    section[data-testid="stSidebar"] { background-color: #1e293b !important; }
+    
+    /* ข้อความใน Sidebar */
     section[data-testid="stSidebar"] h1,
     section[data-testid="stSidebar"] h2,
     section[data-testid="stSidebar"] h3,
@@ -41,65 +39,65 @@ st.markdown("""
     section[data-testid="stSidebar"] span,
     section[data-testid="stSidebar"] div { color: #ffffff !important; }
 
-    /* กล่องเลือก / ช่องกรอก ใน Sidebar */
+    /* กล่องเลือก / ช่องกรอก */
     section[data-testid="stSidebar"] [data-baseweb="select"],
     section[data-testid="stSidebar"] input[type="text"],
     section[data-testid="stSidebar"] input[type="number"],
     section[data-testid="stSidebar"] input[type="range"] {
         background-color: #ffffff !important;
-        color: #0f172a !important;
-        border: 1px solid #cbd5e1 !important;
+        color: #000000 !important;
+        border: 1px solid #94a3b8 !important;
     }
     
-    /* รายการตัวเลือกที่เด้งลงมา */
+    /* รายการตัวเลือก */
     [data-baseweb="popover"] ul,
     [data-baseweb="popover"] li { background-color: #ffffff !important; }
     [data-baseweb="popover"] li,
-    [data-baseweb="popover"] li * { color: #0f172a !important; }
-    [data-baseweb="popover"] li:hover { background-color: #e2e8f0 !important; }
+    [data-baseweb="popover"] li * { color: #000000 !important; }
+    [data-baseweb="popover"] li:hover { background-color: #f1f5f9 !important; }
 
-    /* ---------- ปรับสี Slider (เวอร์ชันเห็นชัดที่สุด) ---------- */
-    /* เส้นฐาน (Track) - สีเทาเข้มชัดเจน */
+    /* ---------- Slider แบบเรียบง่าย---------- */
+    /* เส้นฐาน */
     section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div {
-        background-color: #475569 !important; 
-        border-radius: 9999px; 
-        height: 8px; /* หนาขึ้น */
+        background-color: #64748b !important;
+        border-radius: 4px;
     }
-    /* เส้นที่ลากไปแล้ว (Fill) - สีส้มสดใส ตัดกับพื้นดำ */
+    /* เส้นที่ลากแล้ว (สีน้ำเงิน) */
     section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div > div {
-        background-color: #f59e0b !important; /* ส้ม */
-        border-radius: 9999px;
+        background-color: #3b82f6 !important;
+        border-radius: 4px;
     }
-    /* จุดจับ (Handle) - สีขาวขอบส้ม ใหญ่ขึ้น */
+    /* จุดจับ (สีขาวขอบน้ำเงิน) */
     section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div > div > div {
         background-color: #ffffff !important; 
-        border: 4px solid #f59e0b !important; 
-        width: 20px; /* ขยายจุดจับให้จับง่าย */
-        height: 20px;
-        margin-top: -6px;
+        border: 2px solid #3b82f6 !important; 
+        width: 18px;
+        height: 18px;
     }
-    /* กล่องตัวเลข - เปลี่ยนเป็นสีขาวล้วน ตัดกับพื้นหลังที่สุด */
+    /* ตัวเลข (พื้นขาว ตัวดำ ใหญ่ชัดเจน) */
     section[data-testid="stSidebar"] [data-testid="stSlider"] span {
         background-color: #ffffff !important;
-        color: #0f172a !important; /* ตัวหนังสือสีดำ */
-        font-weight: 900 !important;
-        font-size: 1.2rem !important;
-        padding: 2px 8px !important;
-        border-radius: 8px !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2); /* มีเงาให้เห็นลอยเด่น */
+        color: #000000 !important;
+        font-weight: bold !important;
+        font-size: 1.1rem !important;
+        padding: 4px 10px !important;
+        border-radius: 6px !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
     }
 
-    /* ---------- Advanced Settings (Expander) ---------- */
+    /* ---------- ปุ่มตั้งค่า ---------- */
     section[data-testid="stSidebar"] details {
-        background-color: #1e293b !important;
-        border: 2px solid #3b82f6 !important; /* ขอบสีฟ้าชัดเจน */
-        border-radius: 12px;
+        background-color: #334155 !important;
+        border: 2px solid #64748b !important;
+        border-radius: 8px;
         margin-top: 10px;
     }
     section[data-testid="stSidebar"] details summary {
         list-style: none;
-        padding: 10px;
+        padding: 12px;
         cursor: pointer;
+        display: flex;
+        align-items: center;
     }
     section[data-testid="stSidebar"] details summary::-webkit-details-marker {
         display: none;
@@ -109,24 +107,24 @@ st.markdown("""
         font-weight: bold;
         font-size: 1.1rem !important;
     }
-    /* ลูกศร - เปลี่ยนเป็นสีเหลืองทองให้เด่น */
+    /* ลูกศร */
     section[data-testid="stSidebar"] details summary::after {
-        content: "▶";
-        margin-right: 10px;
-        color: #fbbf24; /* สีเหลืองทอง */
-        font-size: 1.2rem;
+        content: "▼";
+        margin-left: auto;
+        color: #94a3b8;
+        font-size: 1rem;
     }
     section[data-testid="stSidebar"] details[open] summary::after {
-        content: "▼";
+        content: "▲";
     }
 
-    /* ---------- ช่องอัปโหลดไฟล์ ---------- */
+    /* ---------- อัปโหลดไฟล์ ---------- */
     [data-testid="stFileUploader"] section {
         background-color: #f8fafc !important;
-        border: 2px dashed #64748b !important;
+        border: 2px dashed #94a3b8 !important;
     }
     [data-testid="stFileUploader"] section *,
-    [data-testid="stFileUploaderFile"] * { color: #0f172a !important; }
+    [data-testid="stFileUploaderFile"] * { color: #000000 !important; }
     [data-testid="stFileUploader"] section button {
         background-color: #ffffff !important;
         border: 1px solid #0f172a !important;
@@ -134,17 +132,17 @@ st.markdown("""
     [data-testid="stFileUploader"] section button * { color: #0f172a !important; }
     [data-testid="stFileUploader"] svg { fill: #0f172a !important; }
 
-    /* ---------- ปุ่ม ---------- */
+    /* ---------- ปุ่มทั่วไป ---------- */
     .stButton > button, .stDownloadButton > button {
         background-color: #0f172a !important;
-        border: 2px solid #ffffff !important;
+        border: 1px solid #ffffff !important;
         padding: 0.6rem 1.5rem;
-        border-radius: 8px;
+        border-radius: 6px;
         font-weight: bold;
         color: white !important;
     }
     .stButton > button:hover, .stDownloadButton > button:hover {
-        background-color: #1d4ed8 !important;
+        background-color: #3b82f6 !important;
     }
 </style>
 """, unsafe_allow_html=True)
