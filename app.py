@@ -763,24 +763,107 @@ SYSTEM_PROMPT = (
 )
 
 
+@st.cache_resource(show_spinner=False)
+def _compat_store() -> dict:
+    """จำว่าโมเดลแต่ละตัวต้องส่งพารามิเตอร์แบบไหน (ใช้ร่วมกันทุก session)"""
+    return {}
+
+
+def _extract_content(response) -> str:
+    """ดึงข้อความคำตอบจาก response ของผู้ให้บริการหลายรูปแบบ"""
+    if not response or not getattr(response, "choices", None):
+        return ""
+    message = response.choices[0].message
+    content = getattr(message, "content", None)
+
+    # บางผู้ให้บริการส่งเป็น list ของ block
+    if isinstance(content, list):
+        content = "".join(
+            part.get("text", "") if isinstance(part, dict) else str(getattr(part, "text", ""))
+            for part in content
+        )
+    # โมเดล reasoning บางตัวใส่คำตอบไว้ที่ reasoning_content แทน
+    if not content:
+        content = getattr(message, "reasoning_content", None) or ""
+    return content or ""
+
+
 def chat(cfg: dict, user_prompt: str, max_tokens: int, temperature: float) -> str:
+    """เรียก AI แบบปรับตัวตามโมเดลอัตโนมัติ
+
+    - ลองส่งแบบมาตรฐานก่อน (system + user, temperature, max_tokens)
+    - ถ้าเซิร์ฟเวอร์ปฏิเสธ จะอ่านข้อความ error แล้วปรับวิธีส่ง
+      (รวม system เข้า user, ตัด temperature, ใช้ max_completion_tokens)
+    - จำผลที่ใช้ได้ไว้ต่อโมเดล เพื่อไม่ต้องลองใหม่ทุกครั้ง
+    """
     client = OpenAI(
         api_key=cfg["api_key"],
         base_url=cfg["base_url"],
         timeout=180,
         max_retries=1,
     )
-    response = client.chat.completions.create(
-        model=cfg["model"],
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ],
-        temperature=temperature,
-        max_tokens=max_tokens,
+
+    store = _compat_store()
+    store_key = f"{cfg['base_url']}|{cfg['model']}"
+    flags = store.setdefault(
+        store_key,
+        {"merge_system": False, "token_param": "max_tokens", "use_temp": True},
     )
-    content = response.choices[0].message.content if response.choices else ""
-    return clean_output(content or "")
+
+    last_error = None
+    for _ in range(6):
+        if flags["merge_system"]:
+            messages = [{"role": "user", "content": f"{SYSTEM_PROMPT}\n\n{user_prompt}"}]
+        else:
+            messages = [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ]
+
+        kwargs = {"model": cfg["model"], "messages": messages}
+        if flags["use_temp"]:
+            kwargs["temperature"] = temperature
+        if flags["token_param"]:
+            kwargs[flags["token_param"]] = max_tokens
+
+        try:
+            response = client.chat.completions.create(**kwargs)
+            return clean_output(_extract_content(response))
+        except Exception as exc:
+            last_error = exc
+            msg = str(exc).lower()
+            changed = False
+
+            # โมเดลไม่รองรับ system role (เช่น Gemma)
+            if not flags["merge_system"] and (
+                "system" in msg or "role" in msg or "template" in msg
+                or "conversation roles" in msg
+            ):
+                flags["merge_system"] = True
+                changed = True
+            # โมเดลไม่รับ temperature (เช่น o1, gpt-5)
+            elif flags["use_temp"] and "temperature" in msg:
+                flags["use_temp"] = False
+                changed = True
+            # โมเดลใหม่ใช้ max_completion_tokens แทน max_tokens
+            elif flags["token_param"] == "max_tokens" and "max_tokens" in msg:
+                flags["token_param"] = "max_completion_tokens"
+                changed = True
+            elif flags["token_param"] == "max_completion_tokens" and "max_completion_tokens" in msg:
+                flags["token_param"] = None  # ไม่ส่งเลย
+                changed = True
+            # error 400 ที่ไม่รู้สาเหตุ: ค่อย ๆ ลองแบบเรียบง่ายขึ้น
+            elif "400" in msg or "bad request" in msg or "invalid" in msg:
+                if not flags["merge_system"]:
+                    flags["merge_system"] = True
+                    changed = True
+                elif flags["use_temp"]:
+                    flags["use_temp"] = False
+                    changed = True
+
+            if not changed:
+                raise
+    raise last_error
 
 
 def parse_json(text: str):
@@ -1517,7 +1600,7 @@ def friendly_api_error(error: Exception) -> str:
 
     if "401" in message or "unauthorized" in message or "api key" in message:
         return "ไม่สามารถยืนยัน API Key ได้ กรุณาตรวจสอบ Secrets"
-    if "404" in message or "model" in message and "not found" in message:
+    if "404" in message or ("model" in message and "not found" in message):
         return "ไม่พบโมเดล AI ที่เลือก กรุณาเลือกโมเดลอื่น"
     if "429" in message or "rate limit" in message or "quota" in message:
         return "มีการใช้งาน API มากเกินไปหรือเครดิตไม่เพียงพอ กรุณาลองใหม่ภายหลัง"
@@ -1527,7 +1610,10 @@ def friendly_api_error(error: Exception) -> str:
         return "ไม่สามารถเชื่อมต่อ AI ได้ กรุณาตรวจสอบเครือข่าย"
     if "token" in message or "context length" in message:
         return "เนื้อหาหรือจำนวน Token มากเกินขีดจำกัด กรุณาลดจำนวนข้อหรือย่อเอกสาร"
-    return "เกิดข้อผิดพลาดในการทำงานของ AI กรุณาลองใหม่อีกครั้ง"
+    return (
+        "เกิดข้อผิดพลาดในการทำงานของ AI กรุณาลองใหม่อีกครั้ง\n\n"
+        f"รายละเอียดทางเทคนิค: {str(error)[:300]}"
+    )
 
 
 # =========================================================
