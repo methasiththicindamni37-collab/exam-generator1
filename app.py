@@ -24,7 +24,7 @@ st.set_page_config(
 # ---------- CSS ปรับสีให้ชัดเจน อ่านง่าย ----------
 st.markdown("""
 <style>
-    /* พื้นหลังหลักสีขาว ตัวหนังสือสีดำ */
+    /* พื้นหลังหลัก */
     .stApp { background-color: #ffffff; color: #0f172a; }
     h1, h2, h3, h4, h5, h6, p, label, li, th, td, span, a, div { color: #0f172a !important; }
 
@@ -40,7 +40,7 @@ st.markdown("""
     section[data-testid="stSidebar"] span,
     section[data-testid="stSidebar"] div { color: #ffffff !important; }
 
-    /* กล่องเลือก / ช่องกรอก ใน Sidebar: พื้นขาว ตัวอักษรเข้ม */
+    /* กล่องเลือก / ช่องกรอก ใน Sidebar */
     section[data-testid="stSidebar"] [data-baseweb="select"],
     section[data-testid="stSidebar"] input[type="text"],
     section[data-testid="stSidebar"] input[type="number"],
@@ -50,35 +50,39 @@ st.markdown("""
         border: 1px solid #cbd5e1 !important;
     }
     
-    /* ไอคอนและลูกศรในช่องเลือก */
-    section[data-testid="stSidebar"] [data-baseweb="select"] svg { fill: #0f172a !important; }
-    
-    /* รายการตัวเลือกที่เด้งลงมา (Dropdown) */
+    /* รายการตัวเลือกที่เด้งลงมา */
     [data-baseweb="popover"] ul,
     [data-baseweb="popover"] li { background-color: #ffffff !important; }
     [data-baseweb="popover"] li,
     [data-baseweb="popover"] li * { color: #0f172a !important; }
     [data-baseweb="popover"] li:hover { background-color: #e2e8f0 !important; }
 
-    /* ---------- ปรับสี Slider ให้เห็นชัด ---------- */
-    /* เส้นฐานของ Slider */
+    /* ---------- ปรับสี Slider ให้เห็นชัดที่สุด ---------- */
+    /* เส้นฐาน (Track) */
     section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div {
         background-color: #334155 !important;
     }
-    /* เส้นที่ลากไปแล้ว (Fill) */
+    /* เส้นที่ลากไปแล้ว (Fill) - สีฟ้าสว่าง */
     section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div > div {
-        background-color: #00ffff !important; /* สีฟ้าสดใส */
+        background-color: #00ffff !important; 
     }
-    /* จุดจับ (Handle) */
+    /* จุดจับ (Handle) - สีขาวขอบฟ้า */
     section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div > div > div {
-        background-color: #ffffff !important; /* สีขาว */
-        border: 2px solid #00ffff !important; /* ขอบสีฟ้า */
+        background-color: #ffffff !important; 
+        border: 2px solid #00ffff !important; 
     }
-    /* เลขจำนวน */
-    section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div > div > div > span {
+    /* เลขจำนวน (Value) */
+    section[data-testid="stSlider"] span {
         color: #ffffff !important;
         font-weight: bold;
     }
+
+    /* ---------- Advanced Settings (Expander) ---------- */
+    section[data-testid="stSidebar"] details {
+        background-color: #1e293b !important;
+        border: 1px solid #475569 !important;
+    }
+    section[data-testid="stSidebar"] details summary * { color: #ffffff !important; }
 
     /* ---------- ช่องอัปโหลดไฟล์ ---------- */
     [data-testid="stFileUploader"] section {
@@ -94,27 +98,18 @@ st.markdown("""
     [data-testid="stFileUploader"] section button * { color: #0f172a !important; }
     [data-testid="stFileUploader"] svg { fill: #0f172a !important; }
 
-    /* ---------- ปุ่ม: พื้นกรมท่า ตัวอักษรขาว ---------- */
+    /* ---------- ปุ่ม ---------- */
     .stButton > button, .stDownloadButton > button {
         background-color: #0f172a !important;
         border: none !important;
         padding: 0.6rem 1.5rem;
         border-radius: 8px;
         font-weight: bold;
-    }
-    /* บังคับให้ตัวหนังสือและไอคอนปุ่มเป็นสีขาว */
-    .stButton > button *, .stDownloadButton > button *,
-    .stButton > button p, .stDownloadButton > button p,
-    .stButton > button span, .stDownloadButton > button span {
-        color: #ffffff !important;
-        font-size: 1.05rem;
+        color: white !important;
     }
     .stButton > button:hover, .stDownloadButton > button:hover {
         background-color: #1d4ed8 !important;
     }
-
-    /* ---------- กล่องแจ้งเตือน ---------- */
-    [data-testid="stAlert"] * { color: #0f172a !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -435,9 +430,178 @@ def generate_exam(prompt_text, placeholder=None):
     return f"⚠️ Error: {last_error}"
 
 
+# ---------- Parsing & HTML Generation ----------
+def parse_markdown_to_quiz(md_text):
+    """Parse Markdown text into a list of question objects for the interactive HTML"""
+    questions = []
+    current_q = None
+    answer_map = {}
+
+    # Regex patterns
+    q_pattern = re.compile(r'(?:ข้อที่|ข้อ)\.?\s*(\d+)\.?\s*(.*)', re.IGNORECASE)
+    opt_pattern = re.compile(r'[กขcdn12345]\.\s*(.*)')
+    ans_pattern = re.compile(r'(?:เฉลย|Answer|key)[:\s]*([กขcdn12345])', re.IGNORECASE)
+
+    lines = md_text.split('\n')
+    
+    for i, line in enumerate(lines):
+        line_stripped = line.strip()
+        
+        # Check for Answer Key (usually at the end or start of a block)
+        ans_match = ans_pattern.search(line_stripped)
+        if ans_match and current_q:
+            answer_map[current_q['id']] = ans_match.group(1).upper()
+
+        # Check for Question Start
+        q_match = q_pattern.match(line_stripped)
+        if q_match:
+            if current_q:
+                questions.append(current_q)
+            current_q = {
+                'id': q_match.group(1),
+                'text': q_match.group(2).strip(),
+                'options': []
+            }
+        elif current_q:
+            # Check for Option
+            opt_match = opt_pattern.match(line_stripped)
+            if opt_match:
+                current_q['options'].append(opt_match.group(1).strip())
+
+    if current_q:
+        questions.append(current_q)
+        # Try to find answer for last question if not found above
+        # Sometimes answer is on the line following options
+        # We'll assume the parser needs a bit more context, but this is best effort
+
+    return questions
+
+
+def generate_quiz_html(questions):
+    """Generate HTML/CSS/JS for the interactive quiz"""
+    
+    # Prepare data for JS
+    import json
+    quiz_data = json.dumps(questions)
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <meta charset="UTF-8">
+    <style>
+        body {{ font-family: 'Sarabun', sans-serif; padding: 20px; background: #f8fafc; }}
+        .card {{ background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+        .q-title {{ font-size: 1.1em; font-weight: bold; margin-bottom: 10px; color: #0f172a; }}
+        .option-label {{ display: block; padding: 8px; margin: 5px 0; cursor: pointer; border-radius: 4px; transition: background 0.2s; }}
+        .option-label:hover {{ background: #e2e8f0; }}
+        input[type="radio"] {{ margin-right: 10px; }}
+        .btn-check {{ background: #0f172a; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-top: 10px; }}
+        .btn-check:hover {{ background: #1d4ed8; }}
+        .result {{ margin-top: 10px; font-weight: bold; padding: 10px; border-radius: 4px; display: none; }}
+        .correct {{ background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }}
+        .wrong {{ background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }}
+        .opt-correct {{ background-color: #dcfce7 !important; border: 1px solid #86efac; }}
+        .opt-wrong {{ background-color: #fee2e2 !important; border: 1px solid #fca5a5; }}
+    </style>
+    </head>
+    <body>
+    <div id="quiz-container"></div>
+    <script>
+        const questions = {quiz_data};
+        const container = document.getElementById('quiz-container');
+
+        questions.forEach((q, index) => {{
+            const card = document.createElement('div');
+            card.className = 'card';
+
+            const title = document.createElement('div');
+            title.className = 'q-title';
+            title.innerHTML = `<strong>ข้อที่ ${index + 1}.</strong> ${q.text}`;
+            card.appendChild(title);
+
+            const optionsDiv = document.createElement('div');
+            
+            q.options.forEach((opt, optIndex) => {{
+                const label = document.createElement('label');
+                label.className = 'option-label';
+                
+                const radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.name = `q${index}`;
+                radio.value = opt;
+                
+                label.appendChild(radio);
+                label.appendChild(document.createTextNode(` ${opt}`));
+                optionsDiv.appendChild(label);
+            });
+            card.appendChild(optionsDiv);
+
+            const btn = document.createElement('button');
+            btn.className = 'btn-check';
+            btn.innerText = 'ตรวจคำตอบ';
+            btn.onclick = () => checkAnswer(index, q.answer, optionsDiv);
+            card.appendChild(btn);
+
+            const resultDiv = document.createElement('div');
+            resultDiv.id = `result-${index}`;
+            resultDiv.className = 'result';
+            card.appendChild(resultDiv);
+
+            container.appendChild(card);
+        }});
+
+        function checkAnswer(qIndex, correctAns, optionsContainer) {{
+            const radios = optionsContainer.querySelectorAll('input[type="radio"]');
+            let selectedVal = null;
+            let selectedLabel = null;
+            
+            radios.forEach(r => {{
+                if (r.checked) {{
+                    selectedVal = r.value;
+                    selectedLabel = r.parentElement;
+                }}
+                r.disabled = true;
+            }});
+
+            const resultDiv = document.getElementById(`result-${qIndex}`);
+            resultDiv.style.display = 'block';
+
+            if (!selectedVal) {{
+                resultDiv.className = 'result wrong';
+                resultDiv.innerHTML = 'กรุณาเลือกคำตอบก่อนครับ';
+                return;
+            }}
+
+            if (selectedVal.toUpperCase() === correctAns.toUpperCase()) {{
+                resultDiv.className = 'result correct';
+                resultDiv.innerHTML = '✅ ถูกต้องครับ!';
+                if(selectedLabel) selectedLabel.classList.add('opt-correct');
+            }} else {{
+                resultDiv.className = 'result wrong';
+                resultDiv.innerHTML = `❌ ไม่ถูกต้องครับ เฉลยคือข้อ ${correctAns}`;
+                if(selectedLabel) selectedLabel.classList.add('opt-wrong');
+                
+                // Highlight correct one
+                radios.forEach(r => {{
+                    if (r.value.toUpperCase() === correctAns.toUpperCase()) {{
+                         r.parentElement.classList.add('opt-correct');
+                    }}
+                }});
+            }}
+        }}
+    </script>
+    </body>
+    </html>
+    """
+    return html_content
+
+
 # ---------- Main ----------
 if "exam_result" not in st.session_state:
     st.session_state.exam_result = ""
+if "quiz_html" not in st.session_state:
+    st.session_state.quiz_html = None
 
 if uploaded_file is not None:
     text_content = extract_text(uploaded_file)
@@ -471,7 +635,7 @@ if uploaded_file is not None:
    ข. [ข้อความคำตอบ]
    ค. [ข้อความคำตอบ]
    ง. [ข้อความคำตอบ]
-3. ด้านล่างสุดต้องมี "เฉลย" แยกออกมาชัดเจน
+3. ด้านล่างสุดของแต่ละข้อต้องมี "เฉลย" แยกออกมาชัดเจน เช่น **เฉลย: ก**
 4. ใช้ภาษาไทยทางการ
 5. จัดรูปแบบ Markdown ให้สวยงาม
 6. ตอบเฉพาะข้อสอบและเฉลย ไม่ต้องอธิบายขั้นตอนการคิด
@@ -486,22 +650,39 @@ if uploaded_file is not None:
 
     result = st.session_state.exam_result
     if result and not result.startswith(("⚠️", "⛔")):
-        pdf_bytes = make_pdf(result)
+        # Generate HTML for Quiz Mode
+        parsed_questions = parse_markdown_to_quiz(result)
+        st.session_state.quiz_html = generate_quiz_html(parsed_questions)
+
         d1, d2 = st.columns(2)
         with d1:
-            if pdf_bytes:
+            if st.session_state.quiz_html:
                 st.download_button(
-                    "⬇️ ดาวน์โหลด PDF", pdf_bytes,
-                    file_name="exam.pdf", mime="application/pdf",
+                    "⬇️ ดาวน์โหลด HTML (Quiz)", 
+                    st.session_state.quiz_html.encode("utf-8"),
+                    file_name="exam_quiz.html", 
+                    mime="text/html",
                 )
-            else:
-                st.warning("สร้าง PDF ไม่ได้: ไม่พบฟอนต์ไทย (เพิ่มไฟล์ packages.txt ที่มี fonts-thai-tlwg แล้ว Reboot)")
         with d2:
             st.download_button(
                 "⬇️ ดาวน์โหลด DOCX", make_docx(result),
                 file_name="exam.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             )
+        
+        # Interactive Quiz Display
+        st.divider()
+        tab1, tab2 = st.tabs(["📄 ดูข้อความ (Markdown)", "🖥️ ทำแบบทดสอบออนไลน์"])
+        
+        with tab1:
+            st.markdown(result)
+            
+        with tab2:
+            if st.session_state.quiz_html:
+                st.components.v1.html(st.session_state.quiz_html, height=1500, scrolling=True)
+            else:
+                st.warning("กรุณาสร้างข้อสอบก่อน")
+
     elif result:
         st.warning(result)
 else:
