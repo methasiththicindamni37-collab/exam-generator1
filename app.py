@@ -203,18 +203,27 @@ st.markdown(
         border-radius: 12px;
     }
 
-    /* Answer reveal controls in the result area. */
-    .answer-expander {
-        border: 1px solid #C7D2FE;
-        border-radius: 10px;
-        background: #F8FAFF;
-        margin: .35rem 0 1rem;
-    }
-
     section[data-testid="stSidebar"] [data-testid="stSlider"] label,
     section[data-testid="stSidebar"] [data-testid="stCheckbox"] label {
         color: #F8FAFC !important;
     }
+
+    /* Quiz controls in the main area: dark readable text on light cards */
+    [data-testid="stMain"] [data-testid="stRadio"] label p,
+    [data-testid="stMain"] [data-testid="stRadio"] label span,
+    [data-testid="stMain"] [data-testid="stRadio"] [data-testid="stMarkdownContainer"] p {
+        color: #1E293B !important;
+        font-size: 1rem;
+    }
+    [data-testid="stMain"] textarea {
+        background: #FFFFFF !important;
+        color: #1E293B !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 10px !important;
+    }
+    [data-testid="stMain"] textarea::placeholder { color: #94A3B8 !important; }
+    [data-testid="stMetricValue"], [data-testid="stMetricLabel"],
+    [data-testid="stMetricLabel"] p { color: #0F172A !important; }
 
     /* Main cards and uploader */
     .hero-card {
@@ -278,16 +287,6 @@ st.markdown(
         background: #EEF2FF !important;
     }
 
-    .result-panel {
-        background: #FFFFFF;
-        border: 1px solid #E2E8F0;
-        border-top: 4px solid #6366F1;
-        border-radius: 16px;
-        padding: 1.5rem;
-        margin-top: 1rem;
-        box-shadow: 0 4px 16px rgba(15,23,42,.05);
-    }
-
     [data-testid="stAlert"] {
         border-radius: 12px;
     }
@@ -338,6 +337,29 @@ if "file_signature" not in st.session_state:
 
 if "generation_error" not in st.session_state:
     st.session_state.generation_error = ""
+
+# Quiz state: whether the student has submitted, and a version counter used in
+# widget keys so that a new exam / retry always starts with empty answers.
+if "quiz_submitted" not in st.session_state:
+    st.session_state.quiz_submitted = False
+
+if "quiz_version" not in st.session_state:
+    st.session_state.quiz_version = 0
+
+
+def reset_quiz():
+    st.session_state.quiz_submitted = False
+    st.session_state.quiz_version += 1
+
+
+def clear_exam():
+    st.session_state.exam_result = ""
+    st.session_state.generation_error = ""
+    reset_quiz()
+
+
+def submit_quiz():
+    st.session_state.quiz_submitted = True
 
 
 # =========================================================
@@ -615,9 +637,12 @@ def generate_exam(
    ค. ตัวเลือกที่สาม
    ง. ตัวเลือกที่สี่
 4. ขึ้นต้นแต่ละคำถามด้วย **ข้อที่ 1:** และเรียงเลขข้อให้ครบ
-5. ระบุเฉลยแยกเป็นบรรทัดสุดท้ายของแต่ละข้อในรูปแบบ **เฉลย: ก.**
+5. ระบุเฉลยแยกเป็นบรรทัดสุดท้ายของแต่ละข้อ (บรรทัดเดียว) ในรูปแบบดังนี้
+   - ปรนัย: **เฉลย: ก.**
+   - ถูก/ผิด (ไม่ต้องมีตัวเลือก ก-ง): **เฉลย: ถูก** หรือ **เฉลย: ผิด**
+   - อัตนัย: **เฉลย: แนวคำตอบสั้น ๆ ในบรรทัดเดียว**
 6. ใช้ภาษาไทยทางการและจัดรูปแบบ Markdown
-7. ตอบเฉพาะข้อสอบและเฉลย ไม่ต้องแสดงขั้นตอนการคิด
+7. ตอบเฉพาะข้อสอบและเฉลย ไม่ต้องแสดงขั้นตอนการคิด ไม่ต้องสรุปเฉลยรวมท้ายข้อสอบ
 """
 
     messages = [
@@ -643,9 +668,11 @@ def generate_exam(
     return content or ""
 
 
-
+# =========================================================
+# Exam parsing (text -> structured questions)
+# =========================================================
 def parse_exam_questions(text: str):
-    """Parse AI output into question text, vertical choices, and a hidden answer."""
+    """Parse AI output into question text, vertical choices, and the answer line."""
     if not text or not text.strip():
         return []
 
@@ -681,21 +708,19 @@ def parse_exam_questions(text: str):
 
     parsed = []
     for block in blocks:
-        answer_match = re.search(
-            r"(?:\*\*)?เฉลย\s*[:：]\s*(.*?)(?:\*\*)?\s*$",
-            block,
-            flags=re.IGNORECASE | re.DOTALL,
-        )
-        answer = answer_match.group(1).strip().rstrip("*").strip() if answer_match else ""
-        if answer_match:
-            body = block[:answer_match.start()].strip()
-        else:
-            body = block
+        # The answer is the first line after "เฉลย:"; anything after it
+        # (e.g. an unwanted combined answer summary) is ignored.
+        answer_match = re.search(r"(?:\*\*)?เฉลย\s*[:：]\s*([^\n]*)", block, flags=re.IGNORECASE)
+        answer = answer_match.group(1).strip().strip("*").strip() if answer_match else ""
+        body = block[:answer_match.start()].strip() if answer_match else block
 
         choice_matches = list(re.finditer(r"(?m)(?:^|\n)\s*(?:\*\*)?([กขคง])\s*[.)、]\s*", body))
         # Older output may contain choices inline after the question text.
         if len(choice_matches) < 2:
             choice_matches = list(re.finditer(r"(?<!\S)(?:\*\*)?([กขคง])\s*[.)、]\s*", body))
+        # A single "ก." is not a choice list.
+        if len(choice_matches) < 2:
+            choice_matches = []
 
         question = body
         choices = []
@@ -707,51 +732,194 @@ def parse_exam_questions(text: str):
                 value = body[value_start:value_end].strip().strip("*").strip()
                 choices.append((choice_match.group(1), value))
 
-        # Preserve non-question headings/instructions without treating them as questions.
         parsed.append({"question": question, "choices": choices, "answer": answer})
 
     return parsed
 
 
-def render_exam_result(text: str):
-    """Render choices vertically and collect every answer in one expander at the bottom."""
-    items = parse_exam_questions(text)
-    if not items:
-        st.markdown(text)
-        return
+def extract_choice_letter(answer: str):
+    """'ก.' / 'ข้อ ค' / '**ง**' -> 'ก' / 'ค' / 'ง'. Returns None if no letter found."""
+    match = re.match(r"^\W*(?:ข้อ\s*)?([กขคง])(?![\u0E00-\u0E7F])", answer or "")
+    return match.group(1) if match else None
 
-    question_number = 0
-    answer_key = []
 
-    for item in items:
-        question = item["question"]
-        choices = item["choices"]
-        answer = item["answer"]
+def extract_tf_answer(answer: str):
+    """Normalise a true/false answer to 'ถูก' / 'ผิด' (or None)."""
+    a = (answer or "").strip().lstrip("*").strip().lower()
+    if a.startswith("ถูก") or a.startswith("true"):
+        return "ถูก"
+    if a.startswith("ผิด") or a.startswith("false"):
+        return "ผิด"
+    return None
 
+
+def build_quiz(text: str):
+    """Convert exam text into quiz items: intro / mc / tf / short."""
+    quiz, number = [], 0
+    for item in parse_exam_questions(text):
+        question, choices, answer = item["question"], item["choices"], item["answer"]
         if not question and not choices and not answer:
             continue
 
-        # Number each actual question; keep introductory text/headings unnumbered.
-        is_question = bool(choices) or bool(re.search(r"ข้อ(?:ที่)?\s*\d+", question))
-        if is_question:
-            question_number += 1
+        is_question = bool(choices) or bool(answer) or bool(re.search(r"ข้อ(?:ที่)?\s*\d+", question))
+        if not is_question:
+            quiz.append({"kind": "intro", "question": question})
+            continue
 
-        if re.search(r"ข้อ(?:ที่)?\s*\d+", question):
-            st.markdown(f"### {question}")
-        elif question:
-            st.markdown(question)
+        number += 1
+        kind, correct = "short", None
+        if len(choices) >= 2:
+            kind = "mc"
+            letter = extract_choice_letter(answer)
+            if letter and letter in dict(choices):
+                correct = letter
+        else:
+            tf = extract_tf_answer(answer)
+            if tf:
+                kind, correct = "tf", tf
 
-        for label, value in choices:
-            st.markdown(f"**{label}.** {value}")
+        quiz.append(
+            {
+                "kind": kind,
+                "number": number,
+                "question": question,
+                "choices": choices,
+                "answer": answer,
+                "correct": correct,
+            }
+        )
+    return quiz
 
-        if answer:
-            answer_key.append((question_number or len(answer_key) + 1, answer))
 
-    # Show a single combined answer key after all questions.
-    if answer_key:
+def correct_display(item) -> str:
+    if item["kind"] == "mc" and item["correct"]:
+        text = dict(item["choices"]).get(item["correct"], "")
+        return f"{item['correct']}. {text}".strip()
+    return item["answer"] or "ไม่มีเฉลย"
+
+
+# =========================================================
+# Quiz rendering (select answers -> submit -> answer key + score)
+# =========================================================
+def render_quiz(text: str):
+    quiz = build_quiz(text)
+    questions = [q for q in quiz if q["kind"] != "intro"]
+    if not questions:
+        # Output could not be parsed into questions: show it as plain text.
+        st.markdown(text)
+        return
+
+    submitted = st.session_state.quiz_submitted
+    version = st.session_state.quiz_version
+
+    def key_of(idx):
+        return f"quiz_{version}_{idx}"
+
+    # ---- score summary (after submission) ----
+    graded = [(i, q) for i, q in enumerate(quiz) if q["kind"] in ("mc", "tf") and q["correct"]]
+    if submitted:
+        score = sum(1 for i, q in graded if st.session_state.get(key_of(i)) == q["correct"])
+        with st.container(border=True):
+            if graded:
+                percent = score / len(graded) * 100
+                col_score, col_bar = st.columns([1, 3])
+                with col_score:
+                    st.metric("คะแนนที่ได้", f"{score} / {len(graded)}")
+                with col_bar:
+                    st.progress(score / len(graded))
+                    if percent >= 80:
+                        st.success(f"ยอดเยี่ยม! ได้ {percent:.0f}%")
+                    elif percent >= 50:
+                        st.info(f"ผ่านเกณฑ์ ได้ {percent:.0f}% ลองทบทวนข้อที่ผิดอีกครั้ง")
+                    else:
+                        st.warning(f"ได้ {percent:.0f}% ควรทบทวนเนื้อหาแล้วลองทำใหม่")
+            else:
+                st.info("ข้อสอบชุดนี้ไม่มีข้อที่ตรวจคะแนนอัตโนมัติได้ กรุณาดูเฉลยเพื่อเทียบคำตอบ")
+            if any(q["kind"] == "short" for q in questions):
+                st.caption("ข้อเขียน (อัตนัย) ไม่นับคะแนนอัตโนมัติ กรุณาเทียบกับแนวคำตอบด้วยตนเอง")
+
+    # ---- questions ----
+    for idx, item in enumerate(quiz):
+        if item["kind"] == "intro":
+            st.markdown(item["question"])
+            continue
+
+        key = key_of(idx)
+        with st.container(border=True):
+            st.markdown(item["question"])
+
+            if item["kind"] == "mc":
+                choice_map = dict(item["choices"])
+                st.radio(
+                    "เลือกคำตอบ",
+                    options=list(choice_map.keys()),
+                    index=None,
+                    format_func=lambda letter, m=choice_map: f"{letter}. {m[letter]}",
+                    key=key,
+                    disabled=submitted,
+                    label_visibility="collapsed",
+                )
+            elif item["kind"] == "tf":
+                st.radio(
+                    "เลือกคำตอบ",
+                    options=["ถูก", "ผิด"],
+                    index=None,
+                    key=key,
+                    disabled=submitted,
+                    horizontal=True,
+                    label_visibility="collapsed",
+                )
+            else:
+                st.text_area(
+                    "คำตอบของคุณ",
+                    key=key,
+                    disabled=submitted,
+                    height=100,
+                    placeholder="พิมพ์คำตอบของคุณที่นี่",
+                )
+
+            if submitted:
+                user_answer = st.session_state.get(key)
+                if item["kind"] in ("mc", "tf") and item["correct"]:
+                    if user_answer == item["correct"]:
+                        st.success("✅ ตอบถูก")
+                    elif user_answer is None:
+                        st.error("❌ ยังไม่ได้ตอบข้อนี้")
+                    else:
+                        st.error("❌ ตอบผิด")
+                    st.markdown(f"**เฉลย:** {correct_display(item)}")
+                elif item["kind"] == "short":
+                    st.markdown(f"**แนวคำตอบ:** {item['answer'] or 'ไม่มีเฉลย'}")
+                else:
+                    st.markdown(f"**เฉลย:** {correct_display(item)}")
+
+    # ---- footer actions ----
+    if not submitted:
+        answered = 0
+        for i, q in enumerate(quiz):
+            if q["kind"] == "intro":
+                continue
+            value = st.session_state.get(key_of(i))
+            if (value or "").strip() if isinstance(value, str) else value is not None:
+                answered += 1
+        st.caption(f"ตอบแล้ว {answered} / {len(questions)} ข้อ")
+        st.button(
+            "✅ ส่งคำตอบและดูเฉลย/คะแนน",
+            type="primary",
+            use_container_width=True,
+            on_click=submit_quiz,
+            key="submit_quiz",
+        )
+    else:
+        st.button(
+            "🔁 ทำแบบทดสอบชุดนี้ใหม่",
+            use_container_width=True,
+            on_click=reset_quiz,
+            key="retry_quiz",
+        )
         with st.expander("📚 ดูเฉลยรวมทั้งหมด", expanded=False):
-            for number, answer in answer_key:
-                st.markdown(f"**ข้อ {number}:** {answer}")
+            for q in questions:
+                st.markdown(f"**ข้อ {q['number']}:** {correct_display(q)}")
 
 
 def friendly_api_error(error: Exception) -> str:
@@ -839,7 +1007,7 @@ st.markdown(
     <div class="hero-card">
         <h1 style="margin:0;color:#0F172A;">🎓 ระบบสร้างข้อสอบอัจฉริยะ</h1>
         <p style="margin:.5rem 0 0;color:#475569;">
-            อัปโหลดเอกสาร ให้ AI วิเคราะห์ และสร้างข้อสอบพร้อมเฉลย
+            อัปโหลดเอกสาร ให้ AI วิเคราะห์ สร้างข้อสอบ แล้วทำข้อสอบและดูเฉลยพร้อมคะแนนได้ทันที
         </p>
     </div>
     """,
@@ -858,9 +1026,8 @@ file_is_valid = False
 if uploaded_file is None:
     # Removing the uploaded file also removes the previous result.
     if st.session_state.file_signature is not None:
-        st.session_state.exam_result = ""
+        clear_exam()
         st.session_state.file_signature = None
-        st.session_state.generation_error = ""
 
     st.markdown(
         """
@@ -883,8 +1050,7 @@ else:
 
     # A different file must never inherit the previous file's exam result.
     if signature != st.session_state.file_signature:
-        st.session_state.exam_result = ""
-        st.session_state.generation_error = ""
+        clear_exam()
         st.session_state.file_signature = signature
 
     try:
@@ -935,9 +1101,8 @@ if uploaded_file is not None and file_is_valid:
         use_container_width=True,
         disabled=generate_disabled,
     ):
-        # Clear old output before starting a new request.
-        st.session_state.exam_result = ""
-        st.session_state.generation_error = ""
+        # Clear old output (and old quiz answers) before starting a new request.
+        clear_exam()
 
         result_text = ""
         live_output = st.empty()
@@ -965,8 +1130,11 @@ if uploaded_file is not None and file_is_valid:
                         piece = getattr(delta, "content", None)
                         if piece:
                             result_text += piece
-                            live_output.markdown(
-                                clean_output(result_text) + " ▌"
+                            # Live preview shows the question text only after
+                            # generation finishes; here we just show progress
+                            # so the answer key is not revealed early.
+                            live_output.caption(
+                                f"⏳ AI กำลังเขียนข้อสอบ... ({len(result_text):,} ตัวอักษร)"
                             )
                 else:
                     result_text = response
@@ -978,8 +1146,8 @@ if uploaded_file is not None and file_is_valid:
 
             st.session_state.exam_result = result_text
             st.session_state.generation_error = ""
+            reset_quiz()
             live_output.empty()
-            st.success("สร้างข้อสอบสำเร็จแล้ว")
             st.rerun()
 
         except Exception as exc:
@@ -997,11 +1165,13 @@ exam_result = st.session_state.exam_result
 
 if exam_result:
     st.divider()
-    st.subheader("📝 ผลข้อสอบและแบบฝึกหัด")
+    st.subheader("📝 ทำข้อสอบ")
+    st.caption("เลือกหรือพิมพ์คำตอบของแต่ละข้อ จากนั้นกดปุ่มด้านล่างเพื่อส่งคำตอบ ดูเฉลย และคะแนน")
 
-    with st.container(border=True):
-        render_exam_result(exam_result)
+    render_quiz(exam_result)
 
+    st.divider()
+    st.markdown("##### ดาวน์โหลดข้อสอบพร้อมเฉลย")
     col_pdf, col_docx = st.columns(2)
 
     with col_pdf:
@@ -1041,9 +1211,8 @@ if exam_result:
             logger.exception("DOCX creation failed")
             st.error("สร้างไฟล์ DOCX ไม่สำเร็จ กรุณาลองใหม่")
 
-    if st.button("🔄 ล้างผลลัพธ์และเริ่มสร้างใหม่"):
-        st.session_state.exam_result = ""
-        st.session_state.generation_error = ""
+    if st.button("🗑️ ล้างผลลัพธ์และเริ่มสร้างใหม่", key="clear_exam"):
+        clear_exam()
         st.rerun()
 
 elif uploaded_file is not None and file_is_valid:
