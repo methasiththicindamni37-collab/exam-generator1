@@ -58,7 +58,6 @@ if provider.startswith("PSU"):
 else:
     if not GOOGLE_KEY:
         st.sidebar.error("ยังไม่ได้ตั้ง GOOGLE_API_KEY ใน Secrets")
-    # แนะนำให้ใช้โมเดลนี้แทน
     model_name = st.sidebar.text_input("ชื่อโมเดล Gemini", value="gemini-2.5-flash")
 
 question_type = st.sidebar.selectbox(
@@ -109,12 +108,12 @@ def generate_exam(prompt_text):
                 max_tokens=2000,
             )
             
-            # --- ส่วนที่แก้ไข Error ---
-            # เช็คว่า resp ส่งกลับมาเป็น "ข้อความ" ธรรมดาไหม (API บางตัวส่ง Error มาแบบ String)
+            # --- จุดสำคัญ: แก้ Error 'str' has no attribute 'choices' ---
+            # ถ้า API ส่งข้อความกลับมาเป็น String ธรรมดา (เช่น Error) ให้แสดงเลย
             if isinstance(resp, str):
                 return resp
             
-            # ถ้าไม่ใช่ String ค่อยดึงข้อมูลแบบปกติ
+            # ถ้าเป็น Object ให้ดึงข้อความ
             return resp.choices[0].message.content
             
         except Exception as e:
