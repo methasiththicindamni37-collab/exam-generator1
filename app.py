@@ -75,6 +75,18 @@ st.markdown(
         color: #1E1B4B;
     }
 
+    /* ซ่อนแถบเครื่องมือ (Fork / GitHub / เมนูสามจุด) */
+    [data-testid="stToolbar"],
+    [data-testid="stAppDeployButton"],
+    [data-testid="stMainMenu"],
+    [data-testid="stDecoration"],
+    [data-testid="stStatusWidget"],
+    #MainMenu,
+    footer {
+        visibility: hidden !important;
+        display: none !important;
+    }
+
     h1, h2, h3, h4, h5, h6 {
         color: var(--heading);
         font-family: 'Prompt', sans-serif !important;
