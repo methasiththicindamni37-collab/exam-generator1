@@ -21,7 +21,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ---------- CSS ปรับสีตัดกันชัดเจนที่สุด ----------
+# ---------- CSS ปรับสีตามคำขอ ----------
 st.markdown("""
 <style>
     /* ---------- พื้นหลังหลัก ---------- */
@@ -30,7 +30,7 @@ st.markdown("""
     /* ---------- Sidebar สีน้ำเงินเข้ม ---------- */
     section[data-testid="stSidebar"] { background-color: #0f172a !important; }
     
-    /* ข้อความใน Sidebar ทั้งหมดเป็นสีขาว */
+    /* ข้อความทั่วไปใน Sidebar เป็นสีขาว */
     section[data-testid="stSidebar"] h1,
     section[data-testid="stSidebar"] h2,
     section[data-testid="stSidebar"] h3,
@@ -46,7 +46,7 @@ st.markdown("""
     section[data-testid="stSidebar"] input[type="range"] {
         background-color: #ffffff !important;
         color: #000000 !important;
-        border: 2px solid #3b82f6 !important; /* ขอบฟ้าชัดๆ */
+        border: 1px solid #94a3b8 !important;
     }
     
     /* รายการตัวเลือกที่เด้งลงมา */
@@ -56,45 +56,44 @@ st.markdown("""
     [data-baseweb="popover"] li * { color: #000000 !important; }
     [data-baseweb="popover"] li:hover { background-color: #e0f2fe !important; }
 
-    /* ---------- Slider แบบสีตัดกันชัดเจน ---------- */
-    /* 1. เส้นฐาน (Track) : สีเทาอ่อน */
+    /* ---------- สไลเดอร์ (Slider) ทั้งหมด ---------- */
+    /* 1. เส้นฐาน (Track): ขาว มีขอบดำ */
     section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div {
-        background-color: #475569 !important; 
-        height: 10px !important; /* หนาขึ้น */
+        background-color: #ffffff !important;
+        border: 2px solid #000000 !important;
+        height: 10px !important;
         border-radius: 9999px;
     }
-    /* 2. เส้นที่ลากไปแล้ว (Fill) : สีเหลืองทอง (ตัดกับพื้นดำได้ดีที่สุด) */
+    /* 2. เส้นที่ลากไปแล้ว (Fill): สีฟ้า */
     section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div > div {
-        background-color: #fbbf24 !important; 
+        background-color: #3b82f6 !important; /* สีฟ้า */
         border-radius: 9999px;
-        box-shadow: 0 0 8px rgba(251, 191, 36, 0.6); /* มีแสงเรือง */
     }
-    /* 3. จุดจับ (Handle) : สีขาวขอบเหลืองทอง */
+    /* 3. จุดจับ (Handle): สีฟ้า */
     section[data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div > div > div > div {
-        background-color: #ffffff !important; 
-        border: 3px solid #fbbf24 !important; 
-        width: 24px !important; /* ใหญ่ขึ้น */
-        height: 24px !important;
-        margin-top: -7px;
+        background-color: #3b82f6 !important; /* สีฟ้า */
+        border: 2px solid #3b82f6 !important;
+        width: 22px;
+        height: 22px;
+        margin-top: -6px;
     }
-    /* 4. ตัวเลข (Value) : กล่องสีขาว ตัวหนังสือดำ ใหญ่และหนา */
+    /* 4. ตัวเลข (Value Box): พื้นขาว ตัวอักษรดำ */
     section[data-testid="stSidebar"] [data-testid="stSlider"] span {
         background-color: #ffffff !important;
         color: #000000 !important;
-        font-weight: 900 !important;
-        font-size: 1.2rem !important;
-        padding: 4px 12px !important;
-        border-radius: 10px !important;
-        border: 2px solid #fbbf24 !important; /* ขอบเหลืองทอง */
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3) !important; /* มีเงาลอยเด่น */
+        font-weight: bold !important;
+        font-size: 1.1rem !important;
+        padding: 2px 8px !important;
+        border-radius: 6px !important;
+        border: 1px solid #cbd5e1 !important;
     }
 
-    /* ---------- ปุ่มตั้งค่าขั้นสูง ---------- */
+    /* ---------- ปุ่มตั้งค่าขั้นสูง (Details) ---------- */
     section[data-testid="stSidebar"] details {
         background-color: #1e293b !important;
         border: 2px solid #3b82f6 !important;
         border-radius: 10px;
-        margin-top: 15px;
+        margin-top: 10px;
     }
     section[data-testid="stSidebar"] details summary {
         list-style: none;
@@ -111,7 +110,7 @@ st.markdown("""
         font-weight: bold;
         font-size: 1.1rem !important;
     }
-    /* ลูกศรเปลี่ยนเป็นสีเหลืองทอง */
+    /* ลูกศร */
     section[data-testid="stSidebar"] details summary::after {
         content: "▼";
         margin-left: auto;
@@ -121,6 +120,30 @@ st.markdown("""
     }
     section[data-testid="stSidebar"] details[open] summary::after {
         content: "▲";
+    }
+
+    /* ---------- ภายในปุ่มตั้งค่าขั้นสูง (เมื่อเปิดแล้ว) ---------- */
+    /* เปลี่ยนพื้นหลังภายในให้เป็นขาว และตัวหนังสือเป็นดำ */
+    section[data-testid="stSidebar"] details > div {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        padding: 15px;
+        border-radius: 0 0 8px 8px;
+        margin-top: 5px;
+    }
+    /* บังคับข้อความภายในให้ดำ */
+    section[data-testid="stSidebar"] details > div label,
+    section[data-testid="stSidebar"] details > div p,
+    section[data-testid="stSidebar"] details > div span,
+    section[data-testid="stSidebar"] details > div div {
+        color: #000000 !important;
+    }
+    /* บังคับช่องกรอกภายในให้เป็นขาว */
+    section[data-testid="stSidebar"] details > div input,
+    section[data-testid="stSidebar"] details > div [data-baseweb="select"] {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border: 1px solid #94a3b8 !important;
     }
 
     /* ---------- อัปโหลดไฟล์ ---------- */
