@@ -4,9 +4,10 @@ import PyPDF2
 from docx import Document
 from openai import OpenAI
 
+# ตั้งค่าหน้าเว็บ
 st.set_page_config(page_title="AI Exam Generator", page_icon="🤖", layout="wide")
 
-# ---------- UI ----------
+# ---------- UI (CSS ตกแต่ง) ----------
 st.markdown("""
 <style>
     .stApp { background-color: #ffffff; }
@@ -26,7 +27,7 @@ st.markdown("""
 st.title("🤖 AI Exam Generator")
 st.markdown("### 📌 ระบบสร้างข้อสอบอัจฉริยะ")
 
-# ---------- Secrets ----------
+# ---------- Secrets (ดึง Key) ----------
 API_KEY = st.secrets.get("OPENAI_API_KEY", "")
 BASE_URL = st.secrets.get("OPENAI_BASE_URL", "https://ai.psu.blue/v1")
 GOOGLE_KEY = st.secrets.get("GOOGLE_API_KEY", "")
@@ -41,7 +42,7 @@ def list_models(api_key, base_url):
         return []
 
 
-# ---------- Sidebar ----------
+# ---------- Sidebar (เมนูซ้าย) ----------
 st.sidebar.header("⚙️ การตั้งค่า")
 provider = st.sidebar.radio("เลือกผู้ให้บริการ", ["PSU dotBlue (OpenAI-compatible)", "Google Gemini"])
 
@@ -58,6 +59,7 @@ if provider.startswith("PSU"):
 else:
     if not GOOGLE_KEY:
         st.sidebar.error("ยังไม่ได้ตั้ง GOOGLE_API_KEY ใน Secrets")
+    # ⚠️ แก้โมเดล Google เป็นเวอร์ชันล่าสุด (2.0-flash ปิดไปแล้ว)
     model_name = st.sidebar.text_input("ชื่อโมเดล Gemini", value="gemini-2.5-flash")
 
 question_type = st.sidebar.selectbox(
@@ -108,12 +110,13 @@ def generate_exam(prompt_text):
                 max_tokens=2000,
             )
             
-            # --- จุดสำคัญ: แก้ Error 'str' has no attribute 'choices' ---
-            # ถ้า API ส่งข้อความกลับมาเป็น String ธรรมดา (เช่น Error) ให้แสดงเลย
+            # *** ส่วนที่สำคัญ (แก้ไข Error) ***
+            # เช็คว่า resp ส่งกลับมาเป็น "ข้อความ" ธรรมดาไหม
+            # (บางที Server ส่ง Error Message มาแบบ String ทำให้เกิด error ตัวก่อนหน้า)
             if isinstance(resp, str):
                 return resp
             
-            # ถ้าเป็น Object ให้ดึงข้อความ
+            # ถ้าไม่ใช่ String ค่อยดึงข้อมูลแบบปกติ
             return resp.choices[0].message.content
             
         except Exception as e:
