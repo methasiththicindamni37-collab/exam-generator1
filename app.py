@@ -39,7 +39,6 @@ NON_CHAT_KEYWORDS = (
 )
 THINK_TAGS = ("think", "thinking", "reasoning")
 
-# ลิงก์แอปที่ใช้ในปุ่มแชร์ (เปลี่ยนได้ที่นี่ หรือกำหนด APP_URL ใน Secrets)
 DEFAULT_APP_URL = "https://exam-generator1-eo7susvtggzhing8dzhvrt.streamlit.app"
 
 
@@ -73,13 +72,11 @@ st.markdown(
         color: var(--text);
     }
 
-    /* Text selection: avoid browser-default bright blue highlight */
     ::selection {
         background: #C7D2FE;
         color: #1E1B4B;
     }
 
-    /* ซ่อนแถบเครื่องมือ (Fork / GitHub / เมนูสามจุด) */
     [data-testid="stToolbar"],
     [data-testid="stAppDeployButton"],
     [data-testid="stMainMenu"],
@@ -91,7 +88,6 @@ st.markdown(
         display: none !important;
     }
 
-    /* ปุ่มแชร์ลอยอยู่มุมขวาบน */
     .st-key-share_box {
         position: fixed !important;
         top: 0.7rem;
@@ -113,13 +109,11 @@ st.markdown(
     .st-key-share_box button span { color: #1E293B !important; }
     .st-key-share_box button:hover { border-color: #818CF8 !important; background: #EEF2FF !important; }
 
-    /* เนื้อหาในกล่องแชร์ (popover) */
     [data-testid="stPopoverBody"],
     [data-testid="stPopoverBody"] p,
     [data-testid="stPopoverBody"] span,
     [data-testid="stPopoverBody"] h5 { color: #1E293B !important; }
 
-    /* ข้อความเล็ก (caption) ใน Sidebar ให้อ่านชัด */
     section[data-testid="stSidebar"] [data-testid="stCaptionContainer"],
     section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] * {
         color: #CBD5E1 !important;
@@ -144,7 +138,6 @@ st.markdown(
         padding-bottom: 3rem;
     }
 
-    /* Sidebar: style text selectively. Do not force every div/span to white. */
     section[data-testid="stSidebar"] {
         background: linear-gradient(180deg, #0F172A 0%, #1E293B 100%);
         border-right: 1px solid rgba(255,255,255,.08);
@@ -167,7 +160,6 @@ st.markdown(
         color: #CBD5E1 !important;
     }
 
-    /* Inputs stay light with dark readable text */
     section[data-testid="stSidebar"] input,
     section[data-testid="stSidebar"] textarea,
     section[data-testid="stSidebar"] [data-baseweb="select"] > div {
@@ -204,7 +196,6 @@ st.markdown(
         color: #F8FAFC !important;
     }
 
-    /* Labels in the open settings panel stay white; input values stay dark. */
     section[data-testid="stSidebar"] [data-testid="stExpander"] input,
     section[data-testid="stSidebar"] [data-testid="stExpander"] [data-baseweb="select"] *,
     section[data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stNumberInput"] button {
@@ -215,8 +206,6 @@ st.markdown(
         color: #CBD5E1 !important;
     }
 
-    /* Sidebar expander header: keep dark background + light text in every state
-       (closed, open, hover, focus, active) */
     section[data-testid="stSidebar"] [data-testid="stExpander"] details,
     section[data-testid="stSidebar"] [data-testid="stExpander"] details[open],
     section[data-testid="stSidebar"] [data-testid="stExpander"] summary,
@@ -248,18 +237,16 @@ st.markdown(
         color: #FFFFFF !important;
     }
 
-    /* Expander body keeps the same dark translucent surface when open */
     section[data-testid="stSidebar"] [data-testid="stExpander"] details[open] {
         background: rgba(255,255,255,.06) !important;
         border-radius: 12px;
     }
 
     section[data-testid="stSidebar"] [data-testid="stSlider"] label,
-    section[data-testid="stSidebar"] [data-testid="stCheckbox"] label {
+    section[data-testid="stSidebar"] [data-testid="stToggle"] label {
         color: #F8FAFC !important;
     }
 
-    /* Quiz controls in the main area: dark readable text on light cards */
     [data-testid="stMain"] [data-testid="stRadio"] label p,
     [data-testid="stMain"] [data-testid="stRadio"] label span,
     [data-testid="stMain"] [data-testid="stRadio"] [data-testid="stMarkdownContainer"] p {
@@ -276,7 +263,6 @@ st.markdown(
     [data-testid="stMetricValue"], [data-testid="stMetricLabel"],
     [data-testid="stMetricLabel"] p { color: #0F172A !important; }
 
-    /* Main cards and uploader */
     .hero-card {
         background: linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 100%);
         border: 1px solid #E0E7FF;
@@ -350,7 +336,6 @@ st.markdown(
         color: #4F46E5 !important;
     }
 
-    /* Make the expand/collapse chevron yellow across the app. */
     [data-testid="stExpander"] summary svg,
     [data-testid="stExpander"] summary [data-testid="stExpanderToggleIcon"],
     [data-testid="stExpander"] summary [data-testid="stExpanderToggleIcon"] svg {
@@ -389,8 +374,6 @@ if "file_signature" not in st.session_state:
 if "generation_error" not in st.session_state:
     st.session_state.generation_error = ""
 
-# Quiz state: whether the student has submitted, and a version counter used in
-# widget keys so that a new exam / retry always starts with empty answers.
 if "quiz_submitted" not in st.session_state:
     st.session_state.quiz_submitted = False
 
@@ -434,7 +417,6 @@ def is_chat_model(model_id: str) -> bool:
 
 
 def extract_text(uploaded_file) -> str:
-    """Extract text from PDF, DOCX, or TXT. Raise a readable exception on failure."""
     if uploaded_file is None:
         return ""
 
@@ -476,7 +458,6 @@ def extract_text(uploaded_file) -> str:
 
 
 def clean_output(text: str) -> str:
-    """Remove common reasoning tags without deleting valid answer text."""
     if not text:
         return ""
 
@@ -484,7 +465,6 @@ def clean_output(text: str) -> str:
     for tag in THINK_TAGS:
         pattern = rf"<{tag}\b[^>]*>.*?</{tag}\s*>"
         cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE | re.DOTALL)
-        # Remove an unmatched opening/closing tag if a provider emitted one.
         cleaned = re.sub(rf"</?{tag}\b[^>]*>", "", cleaned, flags=re.IGNORECASE)
     return cleaned.strip()
 
@@ -519,7 +499,6 @@ def make_docx(markdown_text: str) -> bytes:
     return buffer.getvalue()
 
 
-# Thai font candidates commonly available on Linux / Windows deployments.
 FONT_CANDIDATES = [
     ("Garuda", "Garuda.ttf", "Garuda-Bold.ttf"),
     ("Loma", "Loma.ttf", "Loma-Bold.ttf"),
@@ -625,7 +604,6 @@ def make_pdf(markdown_text: str):
         else:
             style = body_style
 
-        # Escape user/model text so &, <, > cannot break ReportLab's XML parser.
         safe_text = html.escape(strip_markdown(content), quote=False)
         story.append(Paragraph(safe_text, style))
 
@@ -714,21 +692,18 @@ def generate_exam(
     if streaming:
         return response
 
-    # Non-streaming returns one completion object, not an iterable of chunks.
     content = response.choices[0].message.content if response.choices else ""
     return content or ""
 
 
 # =========================================================
-# Exam parsing (text -> structured questions)
+# Exam parsing & Quiz UI helpers
 # =========================================================
 def parse_exam_questions(text: str):
-    """Parse AI output into question text, vertical choices, and the answer line."""
     if not text or not text.strip():
         return []
 
     normalized = text.replace("\r\n", "\n").replace("\r", "\n").strip()
-    # Support both proper line breaks and older one-line AI output.
     normalized = re.sub(
         r"\s+(?=(?:\*\*)?[กขคง]\s*[.)、])",
         "\n",
@@ -741,7 +716,6 @@ def parse_exam_questions(text: str):
         flags=re.IGNORECASE,
     )
 
-    # Split at numbered question headings, preserving each heading.
     starts = list(re.finditer(r"(?m)(?=^\s*(?:\*\*)?ข้อ(?:ที่)?\s*\d+\s*[:.)：-]?)", normalized))
     if starts:
         blocks = []
@@ -751,7 +725,6 @@ def parse_exam_questions(text: str):
             block = normalized[begin:end].strip()
             if block:
                 blocks.append(block)
-        # Keep any introductory text before the first question as a separate block.
         if normalized[:starts[0].start()].strip():
             blocks.insert(0, normalized[:starts[0].start()].strip())
     else:
@@ -759,17 +732,13 @@ def parse_exam_questions(text: str):
 
     parsed = []
     for block in blocks:
-        # The answer is the first line after "เฉลย:"; anything after it
-        # (e.g. an unwanted combined answer summary) is ignored.
         answer_match = re.search(r"(?:\*\*)?เฉลย\s*[:：]\s*([^\n]*)", block, flags=re.IGNORECASE)
         answer = answer_match.group(1).strip().strip("*").strip() if answer_match else ""
         body = block[:answer_match.start()].strip() if answer_match else block
 
         choice_matches = list(re.finditer(r"(?m)(?:^|\n)\s*(?:\*\*)?([กขคง])\s*[.)、]\s*", body))
-        # Older output may contain choices inline after the question text.
         if len(choice_matches) < 2:
             choice_matches = list(re.finditer(r"(?<!\S)(?:\*\*)?([กขคง])\s*[.)、]\s*", body))
-        # A single "ก." is not a choice list.
         if len(choice_matches) < 2:
             choice_matches = []
 
@@ -789,13 +758,11 @@ def parse_exam_questions(text: str):
 
 
 def extract_choice_letter(answer: str):
-    """'ก.' / 'ข้อ ค' / '**ง**' -> 'ก' / 'ค' / 'ง'. Returns None if no letter found."""
     match = re.match(r"^\W*(?:ข้อ\s*)?([กขคง])(?![\u0E00-\u0E7F])", answer or "")
     return match.group(1) if match else None
 
 
 def extract_tf_answer(answer: str):
-    """Normalise a true/false answer to 'ถูก' / 'ผิด' (or None)."""
     a = (answer or "").strip().lstrip("*").strip().lower()
     if a.startswith("ถูก") or a.startswith("true"):
         return "ถูก"
@@ -805,7 +772,6 @@ def extract_tf_answer(answer: str):
 
 
 def build_quiz(text: str):
-    """Convert exam text into quiz items: intro / mc / tf / short."""
     quiz, number = [], 0
     for item in parse_exam_questions(text):
         question, choices, answer = item["question"], item["choices"], item["answer"]
@@ -849,14 +815,10 @@ def correct_display(item) -> str:
     return item["answer"] or "ไม่มีเฉลย"
 
 
-# =========================================================
-# Quiz rendering (select answers -> submit -> answer key + score)
-# =========================================================
 def render_quiz(text: str):
     quiz = build_quiz(text)
     questions = [q for q in quiz if q["kind"] != "intro"]
     if not questions:
-        # Output could not be parsed into questions: show it as plain text.
         st.markdown(text)
         return
 
@@ -866,7 +828,6 @@ def render_quiz(text: str):
     def key_of(idx):
         return f"quiz_{version}_{idx}"
 
-    # ---- score summary (after submission) ----
     graded = [(i, q) for i, q in enumerate(quiz) if q["kind"] in ("mc", "tf") and q["correct"]]
     if submitted:
         score = sum(1 for i, q in graded if st.session_state.get(key_of(i)) == q["correct"])
@@ -889,7 +850,6 @@ def render_quiz(text: str):
             if any(q["kind"] == "short" for q in questions):
                 st.caption("ข้อเขียน (อัตนัย) ไม่นับคะแนนอัตโนมัติ กรุณาเทียบกับแนวคำตอบด้วยตนเอง")
 
-    # ---- questions ----
     for idx, item in enumerate(quiz):
         if item["kind"] == "intro":
             st.markdown(item["question"])
@@ -944,373 +904,181 @@ def render_quiz(text: str):
                 else:
                     st.markdown(f"**เฉลย:** {correct_display(item)}")
 
-    # ---- footer actions ----
-    if not submitted:
-        answered = 0
-        for i, q in enumerate(quiz):
-            if q["kind"] == "intro":
-                continue
-            value = st.session_state.get(key_of(i))
-            if (value or "").strip() if isinstance(value, str) else value is not None:
-                answered += 1
-        st.caption(f"ตอบแล้ว {answered} / {len(questions)} ข้อ")
-        st.button(
-            "✅ ส่งคำตอบและดูเฉลย/คะแนน",
-            type="primary",
-            use_container_width=True,
-            on_click=submit_quiz,
-            key="submit_quiz",
+
+# =========================================================
+# Main App Layout (Sidebar & Main Page)
+# =========================================================
+with st.sidebar:
+    st.markdown("### ⚙️ ตั้งค่าระบบ")
+    
+    # ตัวอย่างการตั้งค่า API Key & Base URL (สามารถปรับเปลี่ยนตามโค้ดเดิมของคุณได้)
+    api_key = st.text_input("OpenAI API Key", type="password", value="")
+    base_url = st.text_input("Base URL", value="https://api.openai.com/v1")
+
+    models_list = list_models(api_key, base_url) if api_key else []
+    default_model = "PSU-LLM/psu-gemma"
+    if default_model not in models_list and models_list:
+        models_list.insert(0, default_model)
+    elif not models_list:
+        models_list = [default_model]
+
+    model = st.selectbox("เลือกโมเดล AI", options=models_list, index=0)
+
+    with st.expander("🛠️ ตั้งการสร้างข้อสอบ", expanded=True):
+        question_type = st.selectbox(
+            "รูปแบบข้อสอบ",
+            options=["Multiple Choice (ปรนัย)", "True/False (ถูก/ผิด)", "Short Answer (อัตนัย)"]
         )
-    else:
-        st.button(
-            "🔁 ทำแบบทดสอบชุดนี้ใหม่",
-            use_container_width=True,
-            on_click=reset_quiz,
-            key="retry_quiz",
-        )
-        with st.expander("📚 ดูเฉลยรวมทั้งหมด", expanded=False):
-            for q in questions:
-                st.markdown(f"**ข้อ {q['number']}:** {correct_display(q)}")
-
-
-def friendly_api_error(error: Exception) -> str:
-    """Map common provider errors to user-friendly Thai messages."""
-    message = str(error).lower()
-
-    if "401" in message or "unauthorized" in message or "api key" in message:
-        return "ไม่สามารถยืนยัน API Key ได้ กรุณาตรวจสอบ Secrets"
-    if "404" in message or "model" in message and "not found" in message:
-        return "ไม่พบโมเดล AI ที่เลือก กรุณาเลือกโมเดลอื่น"
-    if "429" in message or "rate limit" in message or "quota" in message:
-        return "มีการใช้งาน API มากเกินไปหรือเครดิตไม่เพียงพอ กรุณาลองใหม่ภายหลัง"
-    if "timeout" in message or "timed out" in message:
-        return "AI ใช้เวลาประมวลผลนานเกินไป กรุณาลองใหม่"
-    if "connection" in message or "network" in message:
-        return "ไม่สามารถเชื่อมต่อ AI ได้ กรุณาตรวจสอบเครือข่าย"
-    if "token" in message or "context length" in message:
-        return "เนื้อหาหรือจำนวน Token มากเกินขีดจำกัด กรุณาลดจำนวนข้อหรือย่อเอกสาร"
-    return "เกิดข้อผิดพลาดในการสร้างข้อสอบ กรุณาลองใหม่อีกครั้ง"
-
-
-def get_app_url() -> str:
-    try:
-        return str(st.secrets.get("APP_URL", DEFAULT_APP_URL)) or DEFAULT_APP_URL
-    except Exception:
-        return DEFAULT_APP_URL
-
-
-def share_link(label: str, url: str):
-    if hasattr(st, "link_button"):
-        st.link_button(label, url, use_container_width=True)
-    else:
-        st.markdown(f"[{label}]({url})")
-
-
-def render_share_button():
-    """ปุ่มแชร์มุมขวาบน: คัดลอกลิงก์ / ส่งต่อทาง LINE, Facebook, X, อีเมล"""
-    app_url = get_app_url()
-    message = "ลองใช้ระบบสร้างข้อสอบด้วย AI สร้างข้อสอบจากเอกสารพร้อมเฉลยและคะแนน"
-    enc_url = urllib.parse.quote(app_url, safe="")
-    enc_msg = urllib.parse.quote(message, safe="")
-
-    try:
-        box = st.container(key="share_box")
-    except TypeError:  # Streamlit เวอร์ชันเก่าไม่รองรับ key
-        _, box = st.columns([5, 1])
-
-    with box:
-        if hasattr(st, "popover"):
-            holder = st.popover("🔗 แชร์")
+        difficulty = st.selectbox("ระดับความยาก", options=["ง่าย", "ปานกลาง", "ยาก"])
+        number_of_questions = st.slider("จำนวนข้อสอบ", min_value=1, max_value=20, value=5)
+        temperature = st.slider("Temperature", min_value=0.0, max_value=1.0, value=0.7, step=0.05)
+        
+        # --- ใช้ st.toggle (ปุ่มกดเปิด-ปิดสวิตช์) แทน Checkbox ตามที่ต้องการ ---
+        auto_tokens = st.toggle("คำนวณ Max Tokens อัตโนมัติ", value=True)
+        max_tokens = 3050
+        if not auto_tokens:
+            max_tokens = st.number_input("Max Tokens", min_value=256, max_value=8192, value=3050, step=128)
         else:
-            holder = st.expander("🔗 แชร์")
-        with holder:
-            st.markdown("##### แชร์แอปนี้")
-            st.caption("กดไอคอนคัดลอกที่มุมขวาของกล่องลิงก์ แล้วส่งให้เพื่อนได้เลย")
-            st.code(app_url, language=None)
-            share_link("💬 ส่งทาง LINE", f"https://social-plugins.line.me/lineit/share?url={enc_url}")
-            share_link("📘 แชร์ Facebook", f"https://www.facebook.com/sharer/sharer.php?u={enc_url}")
-            share_link("✖️ แชร์ X (Twitter)", f"https://twitter.com/intent/tweet?url={enc_url}&text={enc_msg}")
-            share_link("✉️ ส่งทางอีเมล", f"mailto:?subject={enc_msg}&body={enc_msg}%20{enc_url}")
+            st.caption(f"Max Tokens ที่ระบบคำนวณ: {max_tokens}")
+
+        streaming = st.toggle("แสดงผลแบบ Live (Streaming)", value=True)
 
 
-# =========================================================
-# Sidebar settings
-# =========================================================
-st.sidebar.header("⚙️ ตั้งค่าระบบ")
-
-try:
-    api_key = st.secrets.get("OPENAI_API_KEY", "")
-    base_url = st.secrets.get("OPENAI_BASE_URL", "https://ai.psu.blue/v1")
-except Exception:
-    # Allow the app to show a helpful message even when secrets.toml is absent.
-    api_key = ""
-    base_url = "https://ai.psu.blue/v1"
-
-if not api_key:
-    st.sidebar.error("ยังไม่ได้ตั้ง OPENAI_API_KEY ใน Secrets")
-    available_models = []
-else:
-    available_models = list_models(api_key, base_url)
-
-if available_models:
-    selected_model = st.sidebar.selectbox(
-        "เลือกโมเดล AI",
-        available_models,
-        index=0,
-    )
-else:
-    selected_model = ""
-    st.sidebar.warning("ไม่พบโมเดล AI กรุณาตรวจสอบ API Key และ Base URL")
-
-with st.sidebar.expander("🔧 ตั้งค่าการสร้างข้อสอบ", expanded=True):
-    question_type = st.selectbox(
-        "รูปแบบข้อสอบ",
-        [
-            "Multiple Choice (ปรนัย)",
-            "Short Answer (อัตนัย)",
-            "True/False (ถูกผิด)",
-        ],
-    )
-    difficulty = st.selectbox("ระดับความยาก", ["ง่าย", "ปานกลาง", "ยาก"])
-    number_of_questions = st.slider("จำนวนข้อสอบ", 1, 20, 5)
-    temperature = st.slider("Temperature", 0.0, 1.5, 0.7, 0.1)
-
-    auto_tokens = st.checkbox("คำนวณ Max Tokens อัตโนมัติ", value=True)
-    if auto_tokens:
-        max_tokens = min(16000, max(1500, number_of_questions * 450 + 800))
-        st.caption(f"Max Tokens ที่ระบบคำนวณ: {max_tokens:,}")
-    else:
-        max_tokens = st.number_input(
-            "Max Tokens",
-            min_value=500,
-            max_value=32000,
-            value=4000,
-            step=500,
-        )
-
-    streaming_mode = st.checkbox("แสดงผลแบบ Live (Streaming)", value=True)
-
-
-# =========================================================
-# Main page
-# =========================================================
-render_share_button()
-
+# หน้าหลัก (Main Area)
 st.markdown(
     """
     <div class="hero-card">
-        <h1 style="margin:0;color:#0F172A;">🎓 ระบบสร้างข้อสอบอัจฉริยะ</h1>
-        <p style="margin:.5rem 0 0;color:#475569;">
-            อัปโหลดเอกสาร ให้ AI วิเคราะห์ สร้างข้อสอบ แล้วทำข้อสอบและดูเฉลยพร้อมคะแนนได้ทันที
-        </p>
+        <h1>🎓 ระบบสร้างข้อสอบอัจฉริยะด้วย AI</h1>
+        <p>อัปโหลดเอกสารเพื่อวิเคราะห์และสร้างข้อสอบหรือแบบฝึกหัดได้ทันที</p>
     </div>
     """,
-    unsafe_allow_html=True,
+    unsafe_allow_image=True if 'unsafe_allow_image' in globals() else True,
+    unsafe_allow_html=True
 )
 
-uploaded_file = st.file_uploader(
-    "📂 อัปโหลดเอกสาร (PDF / Word / TXT)",
-    type=["pdf", "docx", "txt"],
-    help="รองรับไฟล์ PDF, DOCX และ TXT",
-)
+uploaded_file = st.file_uploader("📂 อัปโหลดเอกสาร (PDF / Word / TXT)", type=["pdf", "docx", "txt"])
 
-raw_text = ""
-file_is_valid = False
-
-if uploaded_file is None:
-    # Removing the uploaded file also removes the previous result.
-    if st.session_state.file_signature is not None:
+if uploaded_file:
+    file_bytes = uploaded_file.getvalue()
+    file_sig = hashlib.md5(file_bytes).hexdigest()
+    if st.session_state.file_signature != file_sig:
+        st.session_state.file_signature = file_sig
         clear_exam()
-        st.session_state.file_signature = None
 
+    try:
+        doc_text = extract_text(uploaded_file)
+        if len(doc_text) > MAX_CHARS:
+            doc_text = doc_text[:MAX_CHARS]
+            st.warning(f"⚠️ เอกสารยาวเกินกำหนด ระบบได้ตัดทอนเหลือ {MAX_CHARS} ตัวอักษรแรก")
+        
+        st.success(f"โหลดไฟล์สำเร็จ ({len(doc_text):,} ตัวอักษร)")
+
+        if st.button("🚀 เริ่มสร้างข้อสอบ", type="primary", use_container_width=True):
+            if not api_key:
+                st.error("กรุณากรอก API Key ในแถบตั้งค่าด้านซ้ายก่อน")
+            else:
+                with st.spinner("🤖 กำลังสร้างข้อสอบจากเอกสาร..."):
+                    try:
+                        q_type_map = {
+                            "Multiple Choice (ปรนัย)": "Multiple Choice 4 ตัวเลือก (ก, ข, ค, ง)",
+                            "True/False (ถูก/ผิด)": "True/False (ถูกหรือผิด)",
+                            "Short Answer (อัตนัย)": "Short Answer (อัตนัยตอบสั้น)"
+                        }
+                        selected_q_type = q_type_map.get(question_type, question_type)
+
+                        result = generate_exam(
+                            api_key=api_key,
+                            base_url=base_url,
+                            model=model,
+                            document_text=doc_text,
+                            question_type=selected_q_type,
+                            difficulty=difficulty,
+                            number_of_questions=number_of_questions,
+                            temperature=temperature,
+                            max_tokens=max_tokens,
+                            streaming=streaming,
+                        )
+
+                        if streaming:
+                            # Handling generator stream output
+                            full_content = ""
+                            placeholder = st.empty()
+                            for chunk in result:
+                                delta = chunk.choices[0].delta.content if chunk.choices and chunk.choices[0].delta else ""
+                                if delta:
+                                    full_content += delta
+                                    placeholder.markdown(clean_output(full_content))
+                            st.session_state.exam_result = clean_output(full_content)
+                        else:
+                            st.session_state.exam_result = clean_output(result)
+
+                        reset_quiz()
+                        st.rerun()
+                    except Exception as e:
+                        logger.exception("Exam generation failed")
+                        st.error(f"เกิดข้อผิดพลาดในการสร้างข้อสอบ: {e}")
+
+    except Exception as e:
+        st.error(str(e))
+else:
     st.markdown(
         """
         <div class="empty-card">
-            <div style="font-size:3rem;">📄</div>
-            <h3 style="color:#0F172A;">ยังไม่มีข้อสอบ</h3>
-            <p style="color:#64748B;">
-                กรุณาอัปโหลดเอกสาร PDF, Word หรือ TXT<br>
-                จากนั้นกดปุ่มสร้างข้อสอบด้วย AI
-            </p>
+            <h3>ยังไม่ได้อัปโหลดเอกสาร</h3>
+            <p>กรุณาอัปโหลดไฟล์เอกสาร (PDF, Word, หรือ TXT) ที่แถบด้านบนเพื่อเริ่มใช้งาน</p>
         </div>
         """,
-        unsafe_allow_html=True,
+        unsafe_allow_html=True
     )
-else:
-    file_bytes = uploaded_file.getvalue()
-    signature = hashlib.sha256(
-        uploaded_file.name.encode("utf-8") + file_bytes
-    ).hexdigest()
 
-    # A different file must never inherit the previous file's exam result.
-    if signature != st.session_state.file_signature:
-        clear_exam()
-        st.session_state.file_signature = signature
+# แสดงผลข้อสอบและโหมดทำ Quiz
+if st.session_state.exam_result:
+    st.divider()
+    st.subheader("📋 ข้อสอบ / แบบฝึกหัดที่สร้างขึ้น")
 
-    try:
-        raw_text = extract_text(uploaded_file)
+    tab_quiz, tab_raw = st.tabs(["✍️ ทำแบบทดสอบ (Interactive Quiz)", "📄 ดูข้อสอบดิบ & ดาวน์โหลด"])
 
-        if not raw_text.strip():
-            st.warning(
-                "ไม่พบข้อความในเอกสาร หากเป็น PDF ที่สแกนจากรูปภาพ "
-                "ระบบนี้ยังไม่รองรับ OCR กรุณาใช้ PDF ที่เลือกข้อความได้"
+    with tab_quiz:
+        st.caption("สามารถเลือกตอบคำถามด้านล่างนี้ได้ทันที เมื่อทำเสร็จแล้วกดปุ่มส่งคำตอบเพื่อตรวจคะแนน")
+        render_quiz(st.session_state.exam_result)
+
+        col_sub, col_reset = st.columns([1, 1])
+        with col_sub:
+            if not st.session_state.quiz_submitted:
+                if st.button("📤 ส่งคำตอบและตรวจคะแนน", type="primary", use_container_width=True):
+                    submit_quiz()
+                    st.rerun()
+        with col_reset:
+            if st.session_state.quiz_submitted:
+                if st.button("🔄 ทำใหม่อีกครั้ง", use_container_width=True):
+                    reset_quiz()
+                    st.rerun()
+
+    with tab_raw:
+        st.markdown(st.session_state.exam_result)
+        
+        st.markdown("---")
+        col_d1, col_d2 = st.columns(2)
+        
+        with col_d1:
+            docx_bytes = make_docx(st.session_state.exam_result)
+            st.download_button(
+                label="📥 ดาวน์โหลดไฟล์ Word (.docx)",
+                data=docx_bytes,
+                file_name="exam_output.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                use_container_width=True,
             )
-        else:
-            file_is_valid = True
-            original_chars = len(raw_text)
 
-            if len(raw_text) > MAX_CHARS:
-                raw_text = raw_text[:MAX_CHARS]
-                st.info(
-                    f"📄 อ่านเอกสารสำเร็จ {original_chars:,} ตัวอักษร "
-                    f"ระบบจะใช้ {MAX_CHARS:,} ตัวอักษรแรก"
-                )
-            else:
-                st.success(
-                    f"📄 อ่านเอกสารสำเร็จ: {original_chars:,} ตัวอักษร"
-                )
-
-            st.caption(f"ไฟล์ที่เลือก: {uploaded_file.name}")
-
-    except ValueError as exc:
-        st.error(str(exc))
-    except Exception:
-        logger.exception("Unexpected file processing error")
-        st.error("ไม่สามารถอ่านไฟล์ได้ กรุณาตรวจสอบไฟล์อีกครั้ง")
-
-
-# =========================================================
-# Generate action
-# =========================================================
-if uploaded_file is not None and file_is_valid:
-    generate_disabled = (
-        not api_key
-        or not selected_model
-        or not raw_text.strip()
-    )
-
-    if st.button(
-        "🚀 เริ่มสร้างข้อสอบด้วย AI",
-        type="primary",
-        use_container_width=True,
-        disabled=generate_disabled,
-    ):
-        # Clear old output (and old quiz answers) before starting a new request.
-        clear_exam()
-
-        result_text = ""
-        live_output = st.empty()
-
-        try:
-            with st.spinner("🧠 AI กำลังวิเคราะห์เอกสารและสร้างข้อสอบ..."):
-                response = generate_exam(
-                    api_key=api_key,
-                    base_url=base_url,
-                    model=selected_model,
-                    document_text=raw_text,
-                    question_type=question_type,
-                    difficulty=difficulty,
-                    number_of_questions=number_of_questions,
-                    temperature=float(temperature),
-                    max_tokens=int(max_tokens),
-                    streaming=streaming_mode,
-                )
-
-                if streaming_mode:
-                    for chunk in response:
-                        if not chunk.choices:
-                            continue
-                        delta = chunk.choices[0].delta
-                        piece = getattr(delta, "content", None)
-                        if piece:
-                            result_text += piece
-                            # Live preview shows the question text only after
-                            # generation finishes; here we just show progress
-                            # so the answer key is not revealed early.
-                            live_output.caption(
-                                f"⏳ AI กำลังเขียนข้อสอบ... ({len(result_text):,} ตัวอักษร)"
-                            )
-                else:
-                    result_text = response
-
-            result_text = clean_output(result_text)
-
-            if not result_text:
-                raise ValueError("AI ไม่ได้ส่งเนื้อหาข้อสอบกลับมา")
-
-            st.session_state.exam_result = result_text
-            st.session_state.generation_error = ""
-            reset_quiz()
-            live_output.empty()
-            st.rerun()
-
-        except Exception as exc:
-            logger.exception("Exam generation failed")
-            live_output.empty()
-            st.session_state.exam_result = ""
-            st.session_state.generation_error = friendly_api_error(exc)
-            st.error(st.session_state.generation_error)
-
-
-# =========================================================
-# Render result only after successful user-triggered generation
-# =========================================================
-exam_result = st.session_state.exam_result
-
-if exam_result:
-    st.divider()
-    st.subheader("📝 ทำข้อสอบ")
-    st.caption("เลือกหรือพิมพ์คำตอบของแต่ละข้อ จากนั้นกดปุ่มด้านล่างเพื่อส่งคำตอบ ดูเฉลย และคะแนน")
-
-    render_quiz(exam_result)
-
-    st.divider()
-    st.markdown("##### ดาวน์โหลดข้อสอบพร้อมเฉลย")
-    col_pdf, col_docx = st.columns(2)
-
-    with col_pdf:
-        try:
-            pdf_data = make_pdf(exam_result)
-            if pdf_data:
+        with col_d2:
+            pdf_bytes = make_pdf(st.session_state.exam_result)
+            if pdf_bytes:
                 st.download_button(
-                    "⬇️ ดาวน์โหลด PDF",
-                    data=pdf_data,
-                    file_name="exam.pdf",
+                    label="📥 ดาวน์โหลดไฟล์ PDF",
+                    data=pdf_bytes,
+                    file_name="exam_output.pdf",
                     mime="application/pdf",
                     use_container_width=True,
                 )
             else:
-                st.warning(
-                    "ยังไม่พบฟอนต์ภาษาไทยสำหรับสร้าง PDF "
-                    "กรุณาติดตั้งฟอนต์ Garuda, Loma หรือ TH Sarabun New"
-                )
-        except Exception:
-            logger.exception("PDF creation failed")
-            st.error("สร้างไฟล์ PDF ไม่สำเร็จ กรุณาลองใหม่")
-
-    with col_docx:
-        try:
-            docx_data = make_docx(exam_result)
-            st.download_button(
-                "⬇️ ดาวน์โหลด DOCX",
-                data=docx_data,
-                file_name="exam.docx",
-                mime=(
-                    "application/vnd.openxmlformats-officedocument."
-                    "wordprocessingml.document"
-                ),
-                use_container_width=True,
-            )
-        except Exception:
-            logger.exception("DOCX creation failed")
-            st.error("สร้างไฟล์ DOCX ไม่สำเร็จ กรุณาลองใหม่")
-
-    if st.button("🗑️ ล้างผลลัพธ์และเริ่มสร้างใหม่", key="clear_exam"):
-        clear_exam()
-        st.rerun()
-
-elif uploaded_file is not None and file_is_valid:
-    st.info(
-        "ยังไม่มีข้อสอบ กรุณากดปุ่ม «เริ่มสร้างข้อสอบด้วย AI» "
-        "เพื่อให้ระบบเริ่มประมวลผล"
-    )
+                st.caption("⚠️ ไม่พบฟอนต์ภาษาไทยสำหรับสร้าง PDF ในระบบ")
