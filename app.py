@@ -42,7 +42,7 @@ NON_CHAT_KEYWORDS = (
 THINK_TAGS = ("think", "thinking", "reasoning")
 
 # ลิงก์แอปที่ใช้ในปุ่มแชร์ (เปลี่ยนได้ที่นี่ หรือกำหนด APP_URL ใน Secrets)
-DEFAULT_APP_URL = "https://exam-generator1-eo7susvtggzhing8dzhvrt.streamlit.app"
+DEFAULT_APP_URL = "https://exam-generator-eo7susvtggzhing8dzhvrt.streamlit.app"
 
 # ความกว้างมาตรฐานของ Sidebar (Streamlit ใช้ 21rem = 336px) ใช้คำนวณระยะสไลด์
 SIDEBAR_WIDTH = "21rem"
