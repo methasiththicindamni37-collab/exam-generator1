@@ -6,7 +6,7 @@ from openai import OpenAI
 
 st.set_page_config(page_title="AI Exam Generator", page_icon="🤖", layout="wide")
 
-# ---------- UI ----------
+# ---------- UI (CSS) ----------
 st.markdown("""
 <style>
     .stApp { background-color: #ffffff; }
@@ -27,9 +27,9 @@ st.title("🤖 AI Exam Generator")
 st.markdown("### 📌 ระบบสร้างข้อสอบอัจฉริยะ")
 
 # ---------- Secrets ----------
+# ลบ GOOGLE_API_KEY ออกแล้วครับ
 API_KEY = st.secrets.get("OPENAI_API_KEY", "")
 BASE_URL = st.secrets.get("OPENAI_BASE_URL", "https://ai.psu.blue/v1")
-GOOGLE_KEY = st.secrets.get("GOOGLE_API_KEY", "")
 
 
 @st.cache_data(ttl=600, show_spinner=False)
@@ -43,22 +43,30 @@ def list_models(api_key, base_url):
 
 # ---------- Sidebar ----------
 st.sidebar.header("⚙️ การตั้งค่า")
-provider = st.sidebar.radio("เลือกผู้ให้บริการ", ["PSU dotBlue (OpenAI-compatible)", "Google Gemini"])
+st.sidebar.header("🔑 สถานะ API Key")
 
-model_name = ""
-if provider.startswith("PSU"):
-    if not API_KEY:
-        st.sidebar.error("ยังไม่ได้ตั้ง OPENAI_API_KEY ใน Secrets")
-    models = list_models(API_KEY, BASE_URL) if API_KEY else []
-    if models:
-        model_name = st.sidebar.selectbox("โมเดล", models)
-    else:
-        st.sidebar.warning("ดึงรายชื่อโมเดลไม่ได้ กรุณาพิมพ์ชื่อโมเดลเอง")
-        model_name = st.sidebar.text_input("ชื่อโมเดล (ตามหน้า ai.psu.blue)")
+# แสดงสถานะ Key
+if API_KEY:
+    st.sidebar.success("✅ พบ API Key")
 else:
-    if not GOOGLE_KEY:
-        st.sidebar.error("ยังไม่ได้ตั้ง GOOGLE_API_KEY ใน Secrets")
-    model_name = st.sidebar.text_input("ชื่อโมเดล Gemini", value="gemini-2.5-flash")
+    st.sidebar.error("❌ ยังไม่ได้ตั้ง OPENAI_API_KEY ใน Secrets")
+
+# เลือกโมเดล
+model_name = ""
+if API_KEY:
+    try:
+        models = list_models(API_KEY, BASE_URL)
+        if models:
+            model_name = st.sidebar.selectbox("เลือกโมเดล", models)
+        else:
+            st.sidebar.warning("ไม่พบรายการโมเดล (อาจเป็นปัญหาการเชื่อมต่อ)")
+            model_name = st.sidebar.text_input("พิมพ์ชื่อโมเดลเอง")
+    except Exception as e:
+        st.sidebar.error(f"Error: {e}")
+        model_name = st.sidebar.text_input("พิมพ์ชื่อโมเดลเอง")
+else:
+    # กรณีไม่มี Key ให้แสดงช่องพิมพ์ไว้
+    st.sidebar.text_input("พิมพ์ชื่อโมเดลเอง")
 
 question_type = st.sidebar.selectbox(
     "รูปแบบข้อสอบ",
@@ -92,51 +100,37 @@ def extract_text(f):
 def generate_exam(prompt_text):
     if not model_name:
         return "⚠️ กรุณาระบุชื่อโมเดล"
+    if not API_KEY:
+        return "⚠️ กรุณาตั้งค่า OPENAI_API_KEY ใน Secrets"
 
-    if provider.startswith("PSU"):
-        if not API_KEY:
-            return "⚠️ ยังไม่ได้ตั้ง OPENAI_API_KEY ใน Secrets"
-        try:
-            client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
-            
-            # 🔑 จุดสำคัญ: ใช้ stream=True เพื่อให้รองรับโมเดลทั้งหมด (Anthropic, DeepSeek, OpenAI, ฯลฯ)
-            # เพราะ Server ของ PSU ส่งข้อมูลกลับแบบ Streaming
-            response_stream = client.chat.completions.create(
-                model=model_name,
-                messages=[
-                    {"role": "system", "content": "คุณคือครูผู้เชี่ยวชาญ"},
-                    {"role": "user", "content": prompt_text},
-                ],
-                temperature=0.7,
-                max_tokens=2000,
-                stream=True
-            )
-            
-            # วนลูปเก็บข้อมูลทีละชิ้นส่วน (Chunk)
-            full_response = ""
-            for chunk in response_stream:
-                if chunk.choices and chunk.choices[0].delta.content:
-                    full_response += chunk.choices[0].delta.content
-                    
-            return full_response if full_response else "⚠️ ไม่ได้รับข้อความจากโมเดล"
-            
-        except Exception as e:
-            # 🔍 ดักจับ Error 429 (Credit หมด)
-            error_msg = str(e)
-            if "429" in error_msg or "rate limit" in error_msg.lower():
-                return "⛔ หมดวันใช้งาน (Credit Limit) ค่ะ... กรุณาลองใหม่หลัง 00:00 น."
-            return f"⚠️ Error: {e}"
-
-    if not GOOGLE_KEY:
-        return "⚠️ ยังไม่ได้ตั้ง GOOGLE_API_KEY ใน Secrets"
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=GOOGLE_KEY)
-        model = genai.GenerativeModel(model_name)
-        resp = model.generate_content(prompt_text)
-        return resp.text if resp.text else "⚠️ ไม่ได้รับข้อความจากโมเดล"
+        client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
+        
+        # 🔑 จุดสำคัญ: ใช้ stream=True เพื่อให้รองรับการตอบกลับแบบ Streaming
+        response_stream = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "system", "content": "คุณคือครูผู้เชี่ยวชาญ"},
+                {"role": "user", "content": prompt_text},
+            ],
+            temperature=0.7,
+            max_tokens=2000,
+            stream=True
+        )
+        
+        full_response = ""
+        for chunk in response_stream:
+            if chunk.choices and chunk.choices[0].delta.content:
+                full_response += chunk.choices[0].delta.content
+                    
+        return full_response if full_response else "⚠️ ไม่ได้รับข้อความจากโมเดล"
+            
     except Exception as e:
-        return f"เกิดข้อผิดพลาด Google: {e}"
+        error_msg = str(e)
+        # ดักจับ Error 429 (Credit หมด)
+        if "429" in error_msg or "rate limit" in error_msg.lower():
+            return "⛔ หมดวันใช้งาน (Credit Limit) ค่ะ... กรุณาลองใหม่หลัง 00:00 น."
+        return f"⚠️ Error: {e}"
 
 
 # ---------- Main ----------
